@@ -166,7 +166,7 @@ livroai/
 ### Backend
 
 ```bash
-cd backend
+cd app
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -177,11 +177,12 @@ uvicorn app.main:app --reload
 ### Frontend
 
 ```bash
-cd frontend
+cd src
 npm install
 cp .env.example .env   # preencha com suas credenciais
 npm run dev
 ```
 
 ---
+
 
