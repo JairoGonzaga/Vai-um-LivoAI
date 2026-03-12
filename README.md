@@ -146,9 +146,9 @@ livroai/
 - Migrations SQL com RLS, índices e triggers
 - `core/` — config, database e main do FastAPI
 - `models/` — todos os models SQLAlchemy
+- `schemas/` — Pydantic schemas
 
 ### 🔜 Em andamento
-- `schemas/` — Pydantic schemas
 - `routers/` — endpoints da API
 - `core/auth.py` — validação JWT via Supabase JWKS
 - `services/` — YOLO, LLM e Storage
@@ -184,3 +184,4 @@ npm run dev
 ```
 
 ---
+
