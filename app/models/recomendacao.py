@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 from typing import TYPE_CHECKING
  
 from sqlalchemy import String, SmallInteger, DateTime, Text, ForeignKey
@@ -24,7 +23,7 @@ class recomendacoes(Base):
     tipo_recomendacao:  Mapped[str | None]  = mapped_column(String(50),  nullable=True)
     status:             Mapped[str]         = mapped_column(String,      nullable=False, server_default="pendente", index=True)
     feedback:           Mapped[int | None]  = mapped_column(SmallInteger, nullable=True)
-    data_geracao:       Mapped[datetime]    = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    data_geracao:       Mapped[DateTime]    = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
  
     user:  Mapped["users"]  = relationship(back_populates="recomendacoes")
     livro: Mapped["livros"] = relationship(back_populates="recomendacoes")
