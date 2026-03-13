@@ -2,7 +2,7 @@
 
 # 📚 LivroAI
 
-### Um novo modo de encontrar livros em um click
+### Um novo modo de encontrar livros em um clique
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
@@ -25,11 +25,10 @@ Tire uma foto da sua estante — o sistema detecta automaticamente os livros, mo
 
 ## ✨ Funcionalidades
 
-- 📸 **Scan da estante** — fotografe seus livros e deixe a IA identificá-los automaticamente via YOLOv8
-- 🤖 **Recomendações inteligentes** — sugestões personalizadas geradas por LLM com base no seu histórico de leitura
-- 📖 **Gestão da estante** — organize seus livros por status: quero ler, lendo e lido
-- ⭐ **Avaliações e feedback** — avalie seus livros e ajude a IA a melhorar as recomendações
-- 🔄 **Modelo evolutivo** — os dados validados pelos usuários alimentam o retreino contínuo do modelo YOLO
+- 📸 **Análise da estante por imagem** — upload de foto para detectar livros com YOLOv8
+- 🤖 **Recomendações por sessão** — sugestões geradas com base nos livros detectados
+- 📚 **Catálogo de livros** — consulta e criação de livros via API
+- 🧩 **Sessões temporárias** — cada análise gera uma sessão com expiração
 
 ---
 
@@ -37,9 +36,8 @@ Tire uma foto da sua estante — o sistema detecta automaticamente os livros, mo
 
 | Camada | Tecnologia | Motivo |
 |---|---|---|
-| Frontend | React + Vite | SPA rápida com experiência fluida |
 | Backend | FastAPI + SQLAlchemy async | Alta performance para operações de IA |
-| Banco de dados | Supabase (PostgreSQL) | Auth, RLS e Storage em uma única plataforma |
+| Banco de dados | Supabase (PostgreSQL) | Persistência e consultas relacionais |
 | Visão computacional | YOLOv8 | Detecção de objetos estado da arte |
 | IA | LLM via API | Identificação e recomendação de livros |
 
@@ -49,42 +47,33 @@ Tire uma foto da sua estante — o sistema detecta automaticamente os livros, mo
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                        React                            │
-│         (leitura direta via Supabase client)            │
-└────────────────────┬────────────────────────────────────┘
-                     │ operações com lógica de negócio
-                     ▼
-┌─────────────────────────────────────────────────────────┐
 │                      FastAPI                            │
-│         YOLO · LLM · Recomendações · Storage            │
+│      Routers · Services · YOLO · LLM · Sessões          │
 └────────────────────┬────────────────────────────────────┘
-                     │ service key (bypassa RLS)
+                     │ SQLAlchemy async
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │                     Supabase                            │
-│         PostgreSQL · Auth · Storage · RLS               │
+│            PostgreSQL · Storage · RLS                   │
 └─────────────────────────────────────────────────────────┘
 ```
 
-O React lê dados diretamente do Supabase para operações simples. Toda escrita e lógica de negócio passa pelo FastAPI, que usa a service key para operar com segurança no banco.
+Atualmente o projeto neste repositório está focado no backend FastAPI e no fluxo de análise/recomendação por sessão.
 
 ---
 
 ## 🗄️ Modelo de dados
 
 ```
-livros ◄──── estante ────► users
-  │                          │
-  └──── recomendacoes ───────┘
-  
-users ──── analise_yolo
+livros ◄──── recomendacoes ────► sessoes
+                                  │
+                                  └──── analise_yolo
 ```
 
 | Tabela | Descrição |
 |---|---|
 | `livros` | Catálogo central de livros |
-| `users` | Perfis e preferências dos leitores |
-| `estante` | Relação usuário ↔ livro com status e avaliação |
+| `sessoes` | Sessões temporárias de análise e recomendação |
 | `recomendacoes` | Sugestões geradas pela IA com justificativa |
 | `analise_yolo` | Imagens e detecções para retreino do modelo |
 
@@ -97,9 +86,11 @@ users ──── analise_yolo
     ↓
 🔍 YOLOv8 detecta os livros
     ↓
+🔍 OCR le os textos da capa
+    ↓
 🧠 LLM identifica e enriquece os dados
     ↓
-💾 Livros salvos na estante do usuário
+💾 Dados salvos na sessão de análise
     ↓
 ✨ IA gera recomendações personalizadas
     ↓
@@ -111,30 +102,15 @@ users ──── analise_yolo
 ## 📁 Estrutura do projeto
 
 ```
-livroai/
-├── backend/
-│   └── app/
-│       ├── core/           # config, database, auth, main
-│       ├── models/         # SQLAlchemy ORM
-│       ├── schemas/        # Pydantic (request/response)
-│       ├── routers/        # endpoints por domínio
-│       └── services/       # YOLO, LLM, Storage
-│
-├── frontend/
-│   └── src/
-│       ├── components/
-│       ├── pages/
-│       ├── services/       # supabase client + api axios
-│       ├── hooks/
-│       └── store/          # Zustand
-│
-├── supabase/
-│   └── migrations/         # SQL migrations
-│
-└── ml/
-    ├── models/             # pesos YOLO (.pt)
-    ├── dataset/            # imagens + labels validados
-    └── scripts/            # export dataset + treino
+LivroAI/
+├── app/
+│   ├── core/               # config, database e inicialização da API
+│   ├── models/             # models SQLAlchemy
+│   ├── schemas/            # schemas Pydantic
+│   ├── routers/            # endpoints (livros, análise, sessões)
+│   └── services/           # regras de negócio
+├── .env                    # variáveis de ambiente locais
+└── README.md
 ```
 
 ---
@@ -142,17 +118,15 @@ livroai/
 ## 🚧 Status do desenvolvimento
 
 ### ✅ Concluído
-- Schema completo do banco de dados
-- Migrations SQL com RLS, índices e triggers
-- `core/` — config, database e main do FastAPI
-- `models/` — todos os models SQLAlchemy
-- `schemas/` — Pydantic schemas
+- `core/` — configuração, conexão com banco e lifecycle da API
+- `models/` — entidades principais (`livros`, `sessoes`, `recomendacoes`, `analise_yolo`)
+- `schemas/` — contratos de request/response
+- `routers/` — rotas de livros, análise de imagem e sessões
 
 ### 🔜 Em andamento
-- `routers/` — endpoints da API
-- `core/auth.py` — validação JWT via Supabase JWKS
-- `services/` — YOLO, LLM e Storage
-- Frontend React
+- Integração completa dos serviços de YOLO/LLM em produção
+- Evolução de qualidade de recomendação
+- Camada cliente (frontend)
 
 ---
 
@@ -160,28 +134,23 @@ livroai/
 
 ### Pré-requisitos
 - Python 3.11+
-- Node.js 18+
 - Conta no [Supabase](https://supabase.com)
 
 ### Backend
 
 ```bash
-cd app
 python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # preencha com suas credenciais
-uvicorn app.main:app --reload
+.venv\Scripts\Activate.ps1
+# instale as dependências do projeto
+uvicorn app.core.main:app --reload
 ```
 
-### Frontend
+### Rotas já implementadas no código
 
-```bash
-cd src
-npm install
-cp .env.example .env   # preencha com suas credenciais
-npm run dev
-```
+- `GET /health` — status da API (já registrado no `main`)
+- `livros` — listagem, busca por ISBN e criação
+- `analise` — upload de imagem para processamento
+- `sessoes` — consulta, validação e remoção de sessão
 
 ---
 
