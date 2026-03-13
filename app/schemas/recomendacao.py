@@ -1,27 +1,27 @@
+# app/schemas/recomendacao.py
+
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict
+
+from app.schemas.livro import LivroResponse
 
 
 class RecomendacaoBase(BaseModel):
-    justificativa_ia:str | None = None
+    justificativa_ia:  str | None = None
     tipo_recomendacao: str | None = None
-    status:str = "pendente"
 
 
 class RecomendacaoCreate(RecomendacaoBase):
-    user_id: UUID
-    livro_id: UUID  
+    sessao_id: UUID
+    livro_id:  UUID
 
-class RecomendacaoUpdate(BaseModel):
-    status: str | None = None
-    feedback: int | None = None
 
 class RecomendacaoResponse(RecomendacaoBase):
-    id:        UUID
-    user_id: UUID
-    livro_id: UUID  
+    id:           UUID
+    sessao_id:    UUID
+    livro_id:     UUID
     data_geracao: datetime
-    feedback: int | None = None
+    livro:        LivroResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)

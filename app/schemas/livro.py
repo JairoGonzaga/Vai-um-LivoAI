@@ -1,8 +1,8 @@
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict
-
-
+ 
+ 
 class LivroBase(BaseModel):
     nome:           str
     autor:          str
@@ -13,13 +13,14 @@ class LivroBase(BaseModel):
     sinopse:        str | None = None
     ano_publicacao: int | None = None
     editora:        str | None = None
-
+ 
+ 
 class LivroCreate(LivroBase):
-    pass  
-
-
+    pass
+ 
+ 
 class LivroResponse(LivroBase):
     id:        UUID
     criado_em: datetime
-
+ 
     model_config = ConfigDict(from_attributes=True)
