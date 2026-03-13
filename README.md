@@ -146,9 +146,9 @@ livroai/
 - Migrations SQL com RLS, índices e triggers
 - `core/` — config, database e main do FastAPI
 - `models/` — todos os models SQLAlchemy
+- `schemas/` — Pydantic schemas
 
 ### 🔜 Em andamento
-- `schemas/` — Pydantic schemas
 - `routers/` — endpoints da API
 - `core/auth.py` — validação JWT via Supabase JWKS
 - `services/` — YOLO, LLM e Storage
@@ -166,7 +166,7 @@ livroai/
 ### Backend
 
 ```bash
-cd backend
+cd app
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -177,10 +177,12 @@ uvicorn app.main:app --reload
 ### Frontend
 
 ```bash
-cd frontend
+cd src
 npm install
 cp .env.example .env   # preencha com suas credenciais
 npm run dev
 ```
 
 ---
+
+
