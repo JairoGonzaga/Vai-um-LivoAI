@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str
     SUPABASE_SERVICE_KEY: str
 
+    HF_MODEL_REPO_ID:  str
+    HF_MODEL_FILENAME: str
+    HF_TOKEN:          str
 
     APP_ENV: str = 'development'
     APP_NAME: str = 'LivroAI'

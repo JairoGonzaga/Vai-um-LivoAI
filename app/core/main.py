@@ -1,6 +1,8 @@
 from fastapi import FastAPI
-from .config import get_settings
-from .database import engine
+
+from app.services import yolo_service
+from app.core.config import get_settings
+from app.core.database import engine
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -13,7 +15,7 @@ async def lifespan(app: FastAPI):
     async with engine.connect() as connection:
         await connection.execute(text("SELECT 1"))
     print("Database opened")
-
+    yolo_service.inicializar()
     yield
 
     await engine.dispose()
