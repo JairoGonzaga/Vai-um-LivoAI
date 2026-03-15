@@ -1,3 +1,12 @@
+---
+title: LivroAI
+emoji: 📚
+colorFrom: green
+colorTo: blue
+sdk: docker
+pinned: false
+---
+
 <div align="center">
 
 # 📚 LivroAI
@@ -7,7 +16,6 @@
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-05998b)
-![React](https://img.shields.io/badge/React-18+-61dafb)
 
 </div>
 
@@ -17,7 +25,7 @@
 
 **LivroAI** é uma aplicação que combina visão computacional e inteligência artificial para transformar a forma como você descobre novos livros.
 
-Tire uma foto da sua estante — o sistema detecta automaticamente os livros, monta seu perfil de leitor e gera recomendações personalizadas com base no que você já leu.
+Tire uma foto da sua estante — o sistema detecta automaticamente os livros e gera recomendações personalizadas com base no que você já leu.
 
 > Projeto de portfólio desenvolvido para explorar a integração entre YOLOv8, LLMs e uma stack moderna de desenvolvimento web.
 
@@ -27,19 +35,20 @@ Tire uma foto da sua estante — o sistema detecta automaticamente os livros, mo
 
 - 📸 **Análise da estante por imagem** — upload de foto para detectar livros com YOLOv8
 - 🤖 **Recomendações por sessão** — sugestões geradas com base nos livros detectados
-- 📚 **Catálogo de livros** — consulta e criação de livros via API
-- 🧩 **Sessões temporárias** — cada análise gera uma sessão com expiração
+- 📚 **Catálogo de livros** — consulta e criação de livros via Google Books API
+- 🧩 **Sessões temporárias** — cada análise gera uma sessão com expiração de 24h
 
 ---
 
 ## 🧱 Stack
 
-| Camada | Tecnologia | Motivo |
-|---|---|---|
-| Backend | FastAPI + SQLAlchemy async | Alta performance para operações de IA |
-| Banco de dados | Supabase (PostgreSQL) | Persistência e consultas relacionais |
-| Visão computacional | YOLOv8 | Detecção de objetos estado da arte |
-| IA | LLM via API | Identificação e recomendação de livros |
+| Camada | Tecnologia |
+|---|---|
+| Backend | FastAPI + SQLAlchemy async |
+| Banco de dados | Supabase (PostgreSQL) |
+| Visão computacional | YOLOv8 |
+| IA | LLM via API |
+| Deploy | Hugging Face Spaces (Docker) |
 
 ---
 
@@ -58,24 +67,22 @@ Tire uma foto da sua estante — o sistema detecta automaticamente os livros, mo
 └─────────────────────────────────────────────────────────┘
 ```
 
-Atualmente o projeto neste repositório está focado no backend FastAPI e no fluxo de análise/recomendação por sessão.
-
 ---
 
 ## 🗄️ Modelo de dados
 
 ```
 livros ◄──── recomendacoes ────► sessoes
-                                  │
-                                  └──── analise_yolo
+                                    │
+                                    └──── analise_yolo
 ```
 
 | Tabela | Descrição |
 |---|---|
 | `livros` | Catálogo central de livros |
-| `sessoes` | Sessões temporárias de análise e recomendação |
-| `recomendacoes` | Sugestões geradas pela IA com justificativa |
-| `analise_yolo` | Imagens e detecções para retreino do modelo |
+| `sessoes` | Sessões temporárias · expiram em 24h |
+| `recomendacoes` | Sugestões geradas pela IA |
+| `analise_yolo` | Imagens e detecções para retreino |
 
 ---
 
@@ -86,16 +93,27 @@ livros ◄──── recomendacoes ────► sessoes
     ↓
 🔍 YOLOv8 detecta os livros
     ↓
-🔍 OCR le os textos da capa
-    ↓
 🧠 LLM identifica e enriquece os dados
     ↓
 💾 Dados salvos na sessão de análise
     ↓
 ✨ IA gera recomendações personalizadas
-    ↓
-👍 Usuário dá feedback → modelo melhora
 ```
+
+---
+
+## 🔌 API Endpoints
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/api/v1/analise` | Envia foto → retorna livros + recomendações |
+| `GET` | `/api/v1/sessoes/{id}` | Histórico da sessão |
+| `GET` | `/api/v1/sessoes/{id}/valida` | Verifica se sessão está ativa |
+| `DELETE` | `/api/v1/sessoes/{id}` | Remove sessão |
+| `GET` | `/api/v1/livros` | Lista catálogo com filtros |
+| `GET` | `/api/v1/livros/{isbn}` | Busca livro por ISBN |
+| `POST` | `/api/v1/livros` | Adiciona livro via Google Books |
+| `GET` | `/health` | Health check |
 
 ---
 
@@ -103,13 +121,14 @@ livros ◄──── recomendacoes ────► sessoes
 
 ```
 LivroAI/
+├── Dockerfile
+├── requirements.txt
 ├── app/
-│   ├── core/               # config, database e inicialização da API
-│   ├── models/             # models SQLAlchemy
-│   ├── schemas/            # schemas Pydantic
-│   ├── routers/            # endpoints (livros, análise, sessões)
+│   ├── core/               # config, database e lifecycle da API
+│   ├── models/             # SQLAlchemy ORM
+│   ├── schemas/            # Pydantic schemas
+│   ├── routers/            # endpoints
 │   └── services/           # regras de negócio
-├── .env                    # variáveis de ambiente locais
 └── README.md
 ```
 
@@ -118,41 +137,29 @@ LivroAI/
 ## 🚧 Status do desenvolvimento
 
 ### ✅ Concluído
-- `core/` — configuração, conexão com banco e lifecycle da API
-- `models/` — entidades principais (`livros`, `sessoes`, `recomendacoes`, `analise_yolo`)
+- `core/` — configuração, banco e lifecycle
+- `models/` — todas as entidades
 - `schemas/` — contratos de request/response
-- `routers/` — rotas de livros, análise de imagem e sessões
+- `routers/` — livros, análise e sessões
 
 ### 🔜 Em andamento
-- Criação dos services para tratar da regra de negocio da aplicação
-- Integração completa dos serviços de YOLO/LLM em produção
-- Evolução de qualidade de recomendação
-- Camada cliente (frontend)
+- `services/` — YOLO, LLM, Google Books e Storage
+- Frontend React
+- Retreino contínuo do modelo
 
 ---
 
-## ⚙️ Como rodar localmente
+## ⚙️ Variáveis de ambiente
 
-### Pré-requisitos
-- Python 3.11+
-- Conta no [Supabase](https://supabase.com)
+Configure as seguintes secrets no HF Spaces em **Settings → Variables and secrets**:
 
-### Backend
-
-```bash
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-# instale as dependências do projeto
-uvicorn app.core.main:app --reload
 ```
-
-### Rotas já implementadas no código
-
-- `GET /health` — status da API (já registrado no `main`)
-- `livros` — listagem, busca por ISBN e criação
-- `analise` — upload de imagem para processamento
-- `sessoes` — consulta, validação e remoção de sessão
-
----
-
-
+DATABASE_URL
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_KEY
+STORAGE_BUCKET_FOTOS
+GOOGLE_BOOKS_API_KEY
+YOLO_MODEL_PATH
+APP_ENV
+```
