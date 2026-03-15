@@ -86,6 +86,8 @@ livros ◄──── recomendacoes ────► sessoes
     ↓
 🔍 YOLOv8 detecta os livros
     ↓
+🔍 OCR le os textos da capa
+    ↓
 🧠 LLM identifica e enriquece os dados
     ↓
 💾 Dados salvos na sessão de análise
