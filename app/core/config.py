@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
+PORT: int = 7860
 class Settings(BaseSettings):
     DATABASE_URL: str
 
