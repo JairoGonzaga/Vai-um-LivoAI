@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     print("Database closed")
 
 app = FastAPI(
-    title=get_settings().LIVROAI,
+    title=get_settings().APP_NAME,
     version="1.0.0",
     lifespan=lifespan,
     docs_url = "/docs" if settings.DEBUG else None,
