@@ -62,4 +62,5 @@ async def deletar(db: AsyncSession, sessao_id: UUID) -> bool:
         return False
 
     await db.delete(sessao)
+    await db.commit()
     return True

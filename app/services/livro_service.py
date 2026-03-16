@@ -5,7 +5,7 @@ Service Responsavel pela lógica de negócios relacionada aos livros,
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import UUID, select
+from sqlalchemy import select
 import httpx
 from app.core.config import get_settings
 from app.models.livro import Livro
@@ -66,7 +66,10 @@ async def salvar_livro(db: AsyncSession, livro_data: LivroCreate) -> Livro:
     await db.flush()
     return novo_livro
 
-async def get_or_fetch(db: AsyncSession, nome: str) -> Livro | None:
+async def get_or_fetch(db: AsyncSession, nome: str | LivroCreate) -> Livro | None:
+    if isinstance(nome, LivroCreate):
+        nome = nome.nome
+
     livro = await buscar_nome(db, nome)
     if livro:
         return livro
@@ -108,7 +111,7 @@ async def obter_por_idorisbn(db: AsyncSession, isbn: str) -> Livro | None:
     if livro:
         return livro
     try:
-        uuid_val = UUID(isbn)
+        uuid_val = uuid.UUID(isbn)
         result = await db.execute(select(Livro).where(Livro.id == uuid_val))
         return result.scalar_one_or_none()
     except ValueError:

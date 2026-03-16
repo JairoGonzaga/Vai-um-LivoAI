@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.routers import analise, livro, sessoes
 from app.services import yolo_service
 from app.core.config import get_settings
 from app.core.database import engine
@@ -8,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 settings = get_settings()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,14 +32,15 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = settings.ALLOWED_HOSTS,
+    allow_origins = settings.ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
 )
 
-#rotas entram aqui
-
+app.include_router(livro.router,  prefix=f"{settings.API_PREFIX}/livros",  tags=["Livros"])
+app.include_router(analise.router, prefix=f"{settings.API_PREFIX}/analise", tags=["Analise"])
+app.include_router(sessoes.router, prefix=f"{settings.API_PREFIX}/sessoes", tags=["Sessoes"])
 @app.get("/health", tags=["Health"])
 async def health():
     return {"status": "ok", "env": settings.APP_ENV}

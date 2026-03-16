@@ -1,5 +1,3 @@
-# app/services/analise_service.py
-
 import asyncio
 
 from fastapi import UploadFile
@@ -43,7 +41,6 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
         for nome in nomes_limpos
     ])
     livros_encontrados = [l for l in livros_encontrados if l is not None]
-    # 8. LLM gera recomendações
     recomendacoes_ia = await ia_service.gerar_recomendacoes(nomes_limpos)
 
     recomendacoes_salvas = []
@@ -73,6 +70,8 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
                 livro=LivroResponse.model_validate(livro),
             )
         )
+
+    await db.commit()
 
     return SessaoResultado(
         sessao_id=sessao.id,

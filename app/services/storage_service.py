@@ -8,7 +8,7 @@ settings = get_settings()
 def get_supabase() -> Client:
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
-async def upload(file: UploadFile) -> str:
+async def upload(file: UploadFile, imagem_bytes: bytes | None = None) -> str:
     extensao = file.filename.split(".")[-1].lower()
     if extensao not in ["jpg", "jpeg", "png", "webp"]:
         raise HTTPException(
@@ -16,7 +16,8 @@ async def upload(file: UploadFile) -> str:
             detail="Formato de imagem não suportado. Use jpg, jpeg, png ou webp."
         )
 
-    imagem_bytes = await file.read()
+    if imagem_bytes is None:
+        imagem_bytes = await file.read()
     nome_arquivo = f"{uuid.uuid4()}.{extensao}"
     supabase = get_supabase()   
 

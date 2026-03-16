@@ -1,18 +1,47 @@
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+!.env.sample
+
+*.pem
+*.key
+*.crt
+*.p12
 
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.pyd
+*.so
+.python-version
 .venv/
 venv/
+env/
+
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+*.db
+*.sqlite
+*.sqlite3
+*.log
+logs/
+
+uploads/
+media/
+tmp/
 
 app/models/*.pt
+*.onnx
 
 node_modules/
 dist/
+build/
 .next/
+.cache/
 
 .vscode/
 .idea/
