@@ -15,7 +15,6 @@ async def lifespan(app: FastAPI):
     async with engine.connect() as connection:
         await connection.execute(text("SELECT 1"))
     print("Database opened")
-    yolo_service.inicializar()
     yield
 
     await engine.dispose()
