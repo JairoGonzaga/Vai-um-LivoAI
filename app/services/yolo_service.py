@@ -7,11 +7,16 @@ settings = get_settings()
 
 
 async def detectar(imagem_bytes: bytes, content_type: str) -> dict:
+     headers = {}
+     if settings.HF_TOKEN:
+         headers["Authorization"] = f"Bearer {settings.HF_TOKEN}"
+
      async with httpx.AsyncClient() as client:
          try:
              resposta = await client.post(
-                 f"{settings.HF_SPACE_URL}/detectar",
+                 f"{settings.HF_SPACE_URL.rstrip('/')}/detectar",
                  files={"imagem": ("foto.jpg", imagem_bytes, content_type)},
+                 headers=headers,
                  timeout=60,
              )
              resposta.raise_for_status()
