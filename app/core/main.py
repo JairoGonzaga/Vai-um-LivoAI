@@ -4,7 +4,6 @@ from app.routers import analise, livro, sessoes
 from app.services import yolo_service
 from app.core.config import get_settings
 from app.core.database import engine
-from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -13,14 +12,11 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
-    async with engine.connect() as connection:
-        await connection.execute(text("SELECT 1"))
-    print("Database opened")
+    print("Application startup")
     yield
 
     await engine.dispose()
-    print("Database closed")
+    print("Database cleanup completed")
 
 app = FastAPI(
     title=get_settings().APP_NAME,
