@@ -16,8 +16,6 @@ class Settings(BaseSettings):
     HF_TOKEN:     str
 
     GOOGLE_BOOKS_API_KEY: str
-    GOOGLE_VISION_API_KEY: str = ""
-    GOOGLE_VISION_SERVICE_ACCOUNT_JSON: str = ""
     GOOGLE_VISION_CREDENTIALS: str = ""
     MISTRAL_API_KEY: str = ""
 
