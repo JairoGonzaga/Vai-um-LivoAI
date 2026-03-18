@@ -9,12 +9,13 @@ router = APIRouter()
  
  
 
-@router.post("/", response_model=SessaoResultado, status_code=201)
+@router.post("", response_model=SessaoResultado, status_code=201)
+@router.post("/", response_model=SessaoResultado, status_code=201, include_in_schema=False)
 async def analisar_estante(
     foto: UploadFile = File(..., description="Foto da estante"),
     db:   AsyncSession = Depends(get_db),
 ):
-    if not foto.content_type.startswith("image/"):
+    if not foto.content_type or not foto.content_type.startswith("image/"):
         raise HTTPException(status_code=422, detail="Arquivo deve ser uma imagem")
  
     return await analise_service.processar(db, foto)
