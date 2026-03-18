@@ -3,6 +3,7 @@ import io
 import importlib
 import json
 import logging
+import os
 
 import httpx
 from PIL import Image
@@ -13,13 +14,22 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 _vision_client = None
+_vision_client_init_attempted = False
+_vision_api_key_disabled = False
+_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 
 def _obter_vision_client_env_json():
     global _vision_client
+    global _vision_client_init_attempted
 
     if _vision_client is not None:
         return _vision_client
+
+    if _vision_client_init_attempted:
+        return None
+
+    _vision_client_init_attempted = True
 
     try:
         from google.cloud import vision
@@ -28,13 +38,19 @@ def _obter_vision_client_env_json():
         logger.warning("google-cloud-vision não disponível: %s", str(error))
         return None
 
-    cred_json = (settings.GOOGLE_VISION_SERVICE_ACCOUNT_JSON or "").strip()
+    cred_json = (
+        (settings.GOOGLE_VISION_SERVICE_ACCOUNT_JSON or "").strip()
+        or (os.getenv("GOOGLE_VISION_CREDENTIALS") or "").strip()
+    )
     if not cred_json:
         return None
 
     try:
         info = json.loads(cred_json)
-        credenciais = service_account_mod.Credentials.from_service_account_info(info)
+        credenciais = service_account_mod.Credentials.from_service_account_info(
+            info,
+            scopes=_GOOGLE_SCOPES,
+        )
         _vision_client = vision.ImageAnnotatorClient(credentials=credenciais)
         logger.info("Google Vision inicializado com JSON de credencial no env")
         return _vision_client
@@ -45,10 +61,21 @@ def _obter_vision_client_env_json():
 
 
 async def _ler_texto_google_vision_por_api_key(imagem_bytes: bytes) -> str:
-    if not settings.GOOGLE_VISION_API_KEY:
+    global _vision_api_key_disabled
+
+    if _vision_api_key_disabled:
         return ""
 
-    endpoint = f"https://vision.googleapis.com/v1/images:annotate?key={settings.GOOGLE_VISION_API_KEY}"
+    api_key = (settings.GOOGLE_VISION_API_KEY or "").strip()
+    if not api_key:
+        return ""
+
+    if not api_key.startswith("AIza"):
+        logger.warning("GOOGLE_VISION_API_KEY parece inválida (formato inesperado). OCR via API key desativado.")
+        _vision_api_key_disabled = True
+        return ""
+
+    endpoint = f"https://vision.googleapis.com/v1/images:annotate?key={api_key}"
     payload = {
         "requests": [
             {
@@ -67,6 +94,12 @@ async def _ler_texto_google_vision_por_api_key(imagem_bytes: bytes) -> str:
     except httpx.HTTPStatusError as error:
         body = error.response.text if error.response is not None else ""
         logger.warning("Erro Google Vision via API key (status=%s): %s", error.response.status_code, body)
+
+        if error.response is not None and error.response.status_code in {400, 401, 403}:
+            if "API_KEY_INVALID" in body or "API key not valid" in body:
+                logger.warning("API key do Google Vision inválida. OCR via API key desativado para próximas tentativas.")
+                _vision_api_key_disabled = True
+
         return ""
     except httpx.HTTPError as error:
         logger.warning("Erro de rede Google Vision via API key: %s", str(error))
