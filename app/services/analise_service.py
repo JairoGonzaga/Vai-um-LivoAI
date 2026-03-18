@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +7,7 @@ from app.models.recomendacao import Recomendacao
 from app.schemas.sessao import SessaoResultado
 from app.schemas.livro import LivroResponse
 from app.schemas.recomendacao import RecomendacaoResponse
-from app.services import storage_service, livro_service, yolo_service, ia_service
+from app.services import storage_service, livro_service, yolo_service, ia_service, ocr_service
 
 async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
 
@@ -24,29 +22,40 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     resultado_yolo = await yolo_service.detectar(imagem_bytes, foto.content_type)
     nomes_brutos   = resultado_yolo.get("nomes_detectados", [])
     bboxes         = resultado_yolo.get("bboxes", [])
+    textos_ocr     = await ocr_service.extrair_textos_segmentados(imagem_bytes, bboxes)
+
+    entradas_ia = textos_ocr if textos_ocr else nomes_brutos
 
     analise = AnaliseYolo(
         sessao_id=sessao.id,
         imagem_url=imagem_url,
         bboxes_json=bboxes,
-        livros_detectados_json=nomes_brutos,
-        modelo_versao="mock",
+        livros_detectados_json=entradas_ia,
+        modelo_versao="1.0",
     )
     db.add(analise)
 
-    nomes_limpos = await ia_service.limpar_nomes(nomes_brutos)
+    nomes_limpos = await ia_service.limpar_nomes(entradas_ia)
 
-    livros_encontrados = await asyncio.gather(*[
-        livro_service.get_or_fetch(db, nome)
-        for nome in nomes_limpos
-    ])
-    livros_encontrados = [l for l in livros_encontrados if l is not None]
+    livros_encontrados = []
+    for nome in nomes_limpos:
+        livro = await livro_service.get_or_fetch(db, nome)
+        if livro is not None:
+            livros_encontrados.append(livro)
     recomendacoes_ia = await ia_service.gerar_recomendacoes(nomes_limpos)
 
     recomendacoes_salvas = []
 
     for rec in recomendacoes_ia:
-        livro = await livro_service.get_or_fetch(db, rec.get("nome", ""))
+        nome_recomendado = str(rec.get("nome", "")).strip()
+        if not nome_recomendado:
+            continue
+
+        try:
+            livro = await livro_service.get_or_fetch(db, nome_recomendado)
+        except Exception:
+            continue
+
         if not livro:
             continue
 

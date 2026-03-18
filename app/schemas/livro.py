@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
  
 class LivroBase(BaseModel):
     nome:           str
-    autor:          str
+    autor:          str | None = None
     genero:         str | None = None
     isbn:           str | None = None
     link:           str | None = None

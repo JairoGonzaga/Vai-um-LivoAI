@@ -3,6 +3,7 @@ Service Responsavel pela lógica de negócios relacionada aos livros,
  incluindo busca, integração com a API do Google Books e operações de banco de dados.
 """
 import uuid
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -12,6 +13,7 @@ from app.models.livro import Livro
 from app.schemas.livro import LivroCreate
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 async def buscar_isbn(db: AsyncSession, isbn: str) -> Livro | None:
     result = await db.execute(select(Livro).where(Livro.isbn == isbn))
@@ -36,6 +38,12 @@ async def buscar_no_google_books(nome: str) -> dict | None:
                 return None
  
             item = dados["items"][0]["volumeInfo"]
+
+            nome_livro = item.get("title")
+            if not nome_livro:
+                return None
+
+            autor_livro = item.get("authors", [None])[0] or "Autor desconhecido"
  
             isbn = None
             for identificador in item.get("industryIdentifiers", []):
@@ -46,8 +54,8 @@ async def buscar_no_google_books(nome: str) -> dict | None:
                     isbn = identificador["identifier"]
  
             return {
-                "nome":           item.get("title"),
-                "autor":          item.get("authors", [None])[0],
+                "nome":           nome_livro,
+                "autor":          autor_livro,
                 "genero":         item.get("categories", [None])[0],
                 "isbn":           isbn,
                 "link":           item.get("infoLink"),
@@ -61,7 +69,11 @@ async def buscar_no_google_books(nome: str) -> dict | None:
             return None
         
 async def salvar_livro(db: AsyncSession, livro_data: LivroCreate) -> Livro:
-    novo_livro = Livro(**livro_data.model_dump())
+    payload = livro_data.model_dump()
+    if not payload.get("autor"):
+        payload["autor"] = "Autor desconhecido"
+
+    novo_livro = Livro(**payload)
     db.add(novo_livro)
     await db.flush()
     return novo_livro
@@ -69,6 +81,11 @@ async def salvar_livro(db: AsyncSession, livro_data: LivroCreate) -> Livro:
 async def get_or_fetch(db: AsyncSession, nome: str | LivroCreate) -> Livro | None:
     if isinstance(nome, LivroCreate):
         nome = nome.nome
+
+    if not nome or not str(nome).strip():
+        return None
+
+    nome = str(nome).strip()
 
     livro = await buscar_nome(db, nome)
     if livro:
@@ -83,8 +100,12 @@ async def get_or_fetch(db: AsyncSession, nome: str | LivroCreate) -> Livro | Non
         if livro:
             return livro
     
-    livro_data = LivroCreate(**dados_google)
-    return await salvar_livro(db, livro_data)   
+    try:
+        livro_data = LivroCreate(**dados_google)
+        return await salvar_livro(db, livro_data)
+    except Exception as error:
+        logger.warning("Ignorando nome sem dados válidos para salvar no Google Books: %s (%s)", nome, str(error))
+        return None
 
 async def listar( # definimos limites e parametros de busca
     db:     AsyncSession,

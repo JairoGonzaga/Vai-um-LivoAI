@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -23,7 +23,7 @@ class Sessao(Base):
 
     id:        Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
     criado_em: Mapped[datetime]   = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    expira_em: Mapped[datetime]   = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now() + func.make_interval(hours=24))
+    expira_em: Mapped[datetime]   = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now() + interval '24 hours'"))
 
     analises:      Mapped[List["AnaliseYolo"]]   = relationship(back_populates="sessao", cascade="all, delete-orphan")
     recomendacoes: Mapped[List["Recomendacao"]]  = relationship(back_populates="sessao", cascade="all, delete-orphan")

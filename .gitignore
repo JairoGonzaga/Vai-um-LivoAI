@@ -8,6 +8,12 @@
 *.crt
 *.p12
 
+# Credenciais GCP / Vision
+app/cred/
+app/cred/**
+*-block-*.json
+*-cabinet-*.json
+
 __pycache__/
 *.py[cod]
 *.pyd

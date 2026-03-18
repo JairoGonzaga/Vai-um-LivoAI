@@ -1,4 +1,5 @@
 services:
+
   backend:
     build:
       context: .
@@ -8,9 +9,13 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/app/cred/hybrid-cabinet-485920-a4-e0569960d34e.json
     volumes:
       - .:/app
-      - backend_venv_cache:/root/.cache/pip
+      - pip_cache:/root/.cache/pip
+      - easyocr_cache:/root/.EasyOCR        # cache dos modelos do easyocr
+      - hf_cache:/root/.cache/huggingface   # cache do modelo YOLO
     command: uvicorn app.core.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
@@ -27,10 +32,12 @@ services:
       - VITE_API_URL=http://localhost:8000/api/v1
     volumes:
       - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
+      - node_modules:/app/node_modules
     command: npm run dev -- --host 0.0.0.0 --port 5173
     restart: unless-stopped
 
 volumes:
-  frontend_node_modules:
-  backend_venv_cache:
+  pip_cache:
+  node_modules:
+  easyocr_cache:    # persiste modelos do easyocr entre restarts
+  hf_cache:         # persiste modelo YOLO entre restarts

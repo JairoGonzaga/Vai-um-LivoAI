@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     HF_TOKEN:     str
 
     GOOGLE_BOOKS_API_KEY: str
+    GOOGLE_VISION_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
 
     APP_ENV:    str  = "development"

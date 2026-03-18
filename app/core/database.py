@@ -5,12 +5,16 @@ from sqlalchemy.orm import DeclarativeBase
 settings = get_settings()
 
 engine = create_async_engine(
-                        settings.DATABASE_URL,
-                        echo=settings.DEBUG,
-                        pool_size=10,
-                        max_overflow=20,
-                        pool_pre_ping=True
-                    )
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    connect_args={
+        "prepared_statement_cache_size": 0,  # asyncpg usa esse nome
+        "statement_cache_size": 0,
+    }
+)
 
 AsyncSessionLocal = async_sessionmaker(
                         bind=engine,
