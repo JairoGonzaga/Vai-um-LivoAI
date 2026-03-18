@@ -28,8 +28,28 @@ export default function Home() {
       const historicoAtualizado = salvarSessaoNoHistorico(resultado);
       setHistorico(historicoAtualizado);
     } catch (error) {
+      const status = error?.response?.status;
       const detalhe = error?.response?.data?.detail;
-      setErro(typeof detalhe === "string" ? detalhe : "Falha ao analisar imagem.");
+      const vercelRequestId = error?.response?.headers?.["x-vercel-id"];
+
+      console.error("Falha no upload/análise", {
+        status,
+        detalhe,
+        vercelRequestId,
+        data: error?.response?.data,
+      });
+
+      if (typeof detalhe === "string" && detalhe.trim()) {
+        setErro(detalhe);
+      } else if (status) {
+        setErro(
+          vercelRequestId
+            ? `Falha ao analisar imagem (HTTP ${status}) · req ${vercelRequestId}`
+            : `Falha ao analisar imagem (HTTP ${status}).`
+        );
+      } else {
+        setErro("Falha ao analisar imagem.");
+      }
     } finally {
       setLoading(false);
     }

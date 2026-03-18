@@ -1,9 +1,34 @@
 import axios from "axios";
 
+const configuredApiUrl = (import.meta.env.VITE_API_URL ?? "").trim();
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1",
+  baseURL: configuredApiUrl || "/api/v1",
   timeout: 30000,
 });
+
+if (!configuredApiUrl) {
+  console.warn(
+    "VITE_API_URL não configurada. Usando baseURL relativa '/api/v1'."
+  );
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error("Erro na API", {
+      method: error?.config?.method,
+      url: error?.config?.url,
+      baseURL: error?.config?.baseURL,
+      status: error?.response?.status,
+      detail: error?.response?.data?.detail,
+      vercelRequestId: error?.response?.headers?.["x-vercel-id"],
+      data: error?.response?.data,
+    });
+
+    return Promise.reject(error);
+  }
+);
 
 export const analiseApi = {
   async analisarEstante(file) {
