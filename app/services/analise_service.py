@@ -9,6 +9,25 @@ from app.schemas.livro import LivroResponse
 from app.schemas.recomendacao import RecomendacaoResponse
 from app.services import storage_service, livro_service, yolo_service, ia_service, ocr_service
 
+
+def _deduplicar_nomes(items: list[str]) -> list[str]:
+    vistos = set()
+    unicos = []
+
+    for item in items:
+        nome = str(item or "").strip()
+        if not nome:
+            continue
+
+        chave = nome.lower()
+        if chave in vistos:
+            continue
+
+        vistos.add(chave)
+        unicos.append(nome)
+
+    return unicos
+
 async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
 
     imagem_bytes = await foto.read()
@@ -45,7 +64,7 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     )
     db.add(analise)
 
-    nomes_limpos = await ia_service.limpar_nomes(entradas_ia)
+    nomes_limpos = _deduplicar_nomes(await ia_service.limpar_nomes(entradas_ia))
 
     livros_encontrados = []
     for nome in nomes_limpos:
@@ -55,11 +74,17 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     recomendacoes_ia = await ia_service.gerar_recomendacoes(nomes_limpos)
 
     recomendacoes_salvas = []
+    nomes_recomendados_processados = set()
 
     for rec in recomendacoes_ia:
         nome_recomendado = str(rec.get("nome", "")).strip()
         if not nome_recomendado:
             continue
+
+        chave_nome_recomendado = nome_recomendado.lower()
+        if chave_nome_recomendado in nomes_recomendados_processados:
+            continue
+        nomes_recomendados_processados.add(chave_nome_recomendado)
 
         try:
             livro = await livro_service.get_or_fetch(db, nome_recomendado)

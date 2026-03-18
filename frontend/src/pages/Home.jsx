@@ -28,6 +28,7 @@ export default function Home() {
       const historicoAtualizado = salvarSessaoNoHistorico(resultado);
       setHistorico(historicoAtualizado);
     } catch (error) {
+      const isTimeout = error?.code === "ECONNABORTED";
       const status = error?.response?.status;
       const detalhe = error?.response?.data?.detail;
       const vercelRequestId = error?.response?.headers?.["x-vercel-id"];
@@ -41,6 +42,8 @@ export default function Home() {
 
       if (typeof detalhe === "string" && detalhe.trim()) {
         setErro(detalhe);
+      } else if (isTimeout) {
+        setErro("A análise demorou mais do que o esperado. Tente novamente com uma imagem menor ou aguarde alguns segundos e tente de novo.");
       } else if (status) {
         setErro(
           vercelRequestId

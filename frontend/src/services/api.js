@@ -37,6 +37,7 @@ export const analiseApi = {
 
     const { data } = await api.post("/analise/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: 180000,
     });
 
     return data;

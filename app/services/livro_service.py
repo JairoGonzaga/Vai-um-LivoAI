@@ -4,6 +4,7 @@ Service Responsavel pela lógica de negócios relacionada aos livros,
 """
 import uuid
 import logging
+import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -15,6 +16,27 @@ from app.schemas.livro import LivroCreate
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+_GOOGLE_BOOKS_CACHE_TTL_SECONDS = 900
+_google_books_cache: dict[str, tuple[float, dict | None]] = {}
+_CACHE_MISS = object()
+
+
+def _cache_google_books_get(chave: str) -> dict | None | object:
+    item = _google_books_cache.get(chave)
+    if not item:
+        return _CACHE_MISS
+
+    salvo_em, valor = item
+    if time.time() - salvo_em > _GOOGLE_BOOKS_CACHE_TTL_SECONDS:
+        _google_books_cache.pop(chave, None)
+        return _CACHE_MISS
+
+    return valor
+
+
+def _cache_google_books_set(chave: str, valor: dict | None) -> None:
+    _google_books_cache[chave] = (time.time(), valor)
+
 async def buscar_isbn(db: AsyncSession, isbn: str) -> Livro | None:
     result = await db.execute(select(Livro).where(Livro.isbn == isbn))
     return result.scalar_one_or_none()
@@ -24,6 +46,12 @@ async def buscar_nome(db: AsyncSession, nome: str) -> Livro | None:
     return result.scalar_one_or_none()
 
 async def buscar_no_google_books(nome: str) -> dict | None:
+    chave_cache = nome.strip().lower()
+    if chave_cache:
+        valor_cache = _cache_google_books_get(chave_cache)
+        if valor_cache is not _CACHE_MISS:
+            return valor_cache
+
     async with httpx.AsyncClient() as client:
         try:
             resposta = await client.get(
@@ -35,12 +63,16 @@ async def buscar_no_google_books(nome: str) -> dict | None:
             dados = resposta.json()
  
             if not dados.get("items"):
+                if chave_cache:
+                    _cache_google_books_set(chave_cache, None)
                 return None
  
             item = dados["items"][0]["volumeInfo"]
 
             nome_livro = item.get("title")
             if not nome_livro:
+                if chave_cache:
+                    _cache_google_books_set(chave_cache, None)
                 return None
 
             autor_livro = item.get("authors", [None])[0] or "Autor desconhecido"
@@ -53,7 +85,7 @@ async def buscar_no_google_books(nome: str) -> dict | None:
                 if identificador["type"] == "ISBN_10":
                     isbn = identificador["identifier"]
  
-            return {
+            resultado = {
                 "nome":           nome_livro,
                 "autor":          autor_livro,
                 "genero":         item.get("categories", [None])[0],
@@ -64,8 +96,15 @@ async def buscar_no_google_books(nome: str) -> dict | None:
                 "ano_publicacao": int(item["publishedDate"][:4]) if item.get("publishedDate") else None,
                 "editora":        item.get("publisher"),
             }
+
+            if chave_cache:
+                _cache_google_books_set(chave_cache, resultado)
+
+            return resultado
  
         except (httpx.HTTPError, KeyError, ValueError):
+            if chave_cache:
+                _cache_google_books_set(chave_cache, None)
             return None
         
 async def salvar_livro(db: AsyncSession, livro_data: LivroCreate) -> Livro:
