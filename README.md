@@ -1,13 +1,12 @@
-
 <div align="center">
 
 # 📚 LivroAI
 
-### Um novo modo de encontrar livros em um clique
+### Encontre livros a partir de uma foto da estante
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-05998b)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-05998b)
 
 </div>
 
@@ -15,20 +14,24 @@
 
 ## 💡 Sobre o projeto
 
-**LivroAI** é uma aplicação que combina visão computacional e inteligência artificial para transformar a forma como você descobre novos livros.
+O **LivroAI** processa uma imagem da estante e retorna:
 
-Tire uma foto da sua estante — o sistema detecta automaticamente os livros e gera recomendações personalizadas com base no que você já leu.
+- livros detectados/enriquecidos
+- recomendações de leitura por sessão
 
-> Projeto de portfólio desenvolvido para explorar a integração entre YOLOv8, LLMs e uma stack moderna de desenvolvimento web.
+Atualmente o fluxo usa segmentação por YOLO em um Space do Hugging Face, OCR no Google Vision e pós-processamento com LLM.
 
 ---
 
-## ✨ Funcionalidades
+## ✨ Funcionalidades atuais
 
-- 📸 **Análise da estante por imagem** — upload de foto para detectar livros com YOLOv8
-- 🤖 **Recomendações por sessão** — sugestões geradas com base nos livros detectados
-- 📚 **Catálogo de livros** — consulta e criação de livros via Google Books API
-- 🧩 **Sessões temporárias** — cada análise gera uma sessão com expiração de 24h
+- 📸 Upload de imagem via endpoint de análise
+- 🧩 Segmentação de objetos com YOLO (HF Space externo)
+- 🔎 OCR por recorte (bbox) com Google Vision API
+- 🧠 Limpeza de títulos e geração de recomendações com Mistral
+- 📚 Enriquecimento via Google Books API
+- 💾 Persistência em Supabase (PostgreSQL + Storage)
+- ⏱️ Sessões temporárias com expiração
 
 ---
 
@@ -37,27 +40,29 @@ Tire uma foto da sua estante — o sistema detecta automaticamente os livros e g
 | Camada | Tecnologia |
 |---|---|
 | Backend | FastAPI + SQLAlchemy async |
-| Banco de dados | Supabase (PostgreSQL) |
-| Visão computacional | YOLOv8 |
-| IA | LLM via API |
-| Deploy | Hugging Face Spaces (Docker) |
+| Banco/Storage | Supabase (PostgreSQL + Storage) |
+| Detecção | YOLO via Hugging Face Space |
+| OCR | Google Cloud Vision |
+| IA textual | Mistral API |
+| Frontend | React + Vite |
+| Local dev | Docker Compose |
 
 ---
 
-## 🏗️ Arquitetura
+## 🔄 Fluxo de análise
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      FastAPI                            │
-│      Routers · Services · YOLO · LLM · Sessões          │
-└────────────────────┬────────────────────────────────────┘
-                     │ SQLAlchemy async
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                     Supabase                            │
-│            PostgreSQL · Storage · RLS                   │
-└─────────────────────────────────────────────────────────┘
+Foto da estante
+  -> YOLO (HF Space) retorna bboxes
+  -> recorte das bboxes
+  -> OCR Google Vision em cada recorte
+  -> limpeza dos títulos (Mistral)
+  -> busca/enriquecimento (Google Books)
+  -> recomendações (Mistral)
+  -> persistência em sessoes/analise_yolo/recomendacoes
 ```
+
+Observação: nomes não encontrados no Google Books são ignorados sem derrubar o fluxo.
 
 ---
 
@@ -71,103 +76,83 @@ livros ◄──── recomendacoes ────► sessoes
 
 | Tabela | Descrição |
 |---|---|
-| `livros` | Catálogo central de livros |
-| `sessoes` | Sessões temporárias · expiram em 24h |
-| `recomendacoes` | Sugestões geradas pela IA |
-| `analise_yolo` | Imagens e detecções para retreino |
+| `livros` | Catálogo de livros enriquecidos |
+| `sessoes` | Sessões de análise com expiração |
+| `recomendacoes` | Recomendações geradas por sessão |
+| `analise_yolo` | Foto, bboxes e entradas usadas na análise |
 
 ---
 
-## 🔄 Fluxo principal
-
-```
-📸 Foto da estante
-    ↓
-🔍 YOLOv8 detecta os livros
-    ↓
-🧠 LLM identifica e enriquece os dados
-    ↓
-💾 Dados salvos na sessão de análise
-    ↓
-✨ IA gera recomendações personalizadas
-```
-
----
-
-## 🔌 API Endpoints
+## 🔌 Endpoints principais
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `POST` | `/api/v1/analise` | Envia foto → retorna livros + recomendações |
-| `GET` | `/api/v1/sessoes/{id}` | Histórico da sessão |
+| `POST` | `/api/v1/analise/` | Envia foto e retorna livros + recomendações |
+| `GET` | `/api/v1/sessoes/{id}` | Busca resultado da sessão |
 | `GET` | `/api/v1/sessoes/{id}/valida` | Verifica se sessão está ativa |
 | `DELETE` | `/api/v1/sessoes/{id}` | Remove sessão |
-| `GET` | `/api/v1/livros` | Lista catálogo com filtros |
-| `GET` | `/api/v1/livros/{isbn}` | Busca livro por ISBN |
+| `GET` | `/api/v1/livros` | Lista catálogo de livros |
+| `GET` | `/api/v1/livros/{isbn}` | Busca livro por ISBN/UUID |
 | `POST` | `/api/v1/livros` | Adiciona livro via Google Books |
-| `GET` | `/health` | Health check |
-
----
-
-## 📁 Estrutura do projeto
-
-```
-LivroAI/
-├── Dockerfile
-├── requirements.txt
-├── app/
-│   ├── core/               # config, database e lifecycle da API
-│   ├── models/             # SQLAlchemy ORM
-│   ├── schemas/            # Pydantic schemas
-│   ├── routers/            # endpoints
-│   └── services/           # regras de negócio
-└── README.md
-```
-
----
-
-## 🚧 Status do desenvolvimento
-
-### ✅ Concluído
-- `core/` — configuração, banco e lifecycle
-- `models/` — todas as entidades
-- `schemas/` — contratos de request/response
-- `routers/` — livros, análise e sessões
-
-### 🔜 Em andamento
-- `services/` — YOLO, LLM, Google Books e Storage
-- Frontend React
-- Retreino contínuo do modelo
+| `GET` | `/health` | Health check da API |
 
 ---
 
 ## ⚙️ Variáveis de ambiente
 
-Configure as seguintes secrets no HF Spaces em **Settings → Variables and secrets**:
+### Obrigatórias
 
 ```
 DATABASE_URL
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_SERVICE_KEY
-STORAGE_BUCKET_FOTOS
+HF_SPACE_URL
+HF_TOKEN
 GOOGLE_BOOKS_API_KEY
-YOLO_MODEL_PATH
-APP_ENV
 ```
+
+### Opcionais
+
+```
+STORAGE_BUCKET=Pratileiras
+STORAGE_BUCKET_FOTOS=Pratileiras
+MISTRAL_API_KEY=
+GOOGLE_VISION_API_KEY=
+APP_ENV=development
+APP_NAME=LivroAI
+API_PREFIX=/api/v1
+DEBUG=true
+PORT=8000
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+YOLO_CONFIDENCE_THRESHOLD=0.6
+```
+
+### OCR Google Vision (Service Account)
+
+No `docker-compose.yml`, o backend usa:
+
+```
+GOOGLE_APPLICATION_CREDENTIALS=/app/app/cred/hybrid-cabinet-485920-a4-e0569960d34e.json
+```
+
+Importante:
+
+- o arquivo JSON de credencial deve existir localmente em `app/cred/`
+- **não** versionar credenciais no Git
+- billing e Vision API devem estar habilitados no projeto GCP usado
 
 ---
 
-## 🐳 Execução local com Docker
-
-Este repositório inclui um setup Docker separado do deploy do Hugging Face, focado em desenvolvimento local com backend e frontend.
+## 🐳 Execução local (Docker)
 
 ### Pré-requisitos
 
-- Docker Desktop instalado e em execução
-- Arquivo `.env` na raiz (pode copiar de `.env.example`)
+- Docker Desktop ativo
+- arquivo `.env` na raiz
+- credencial GCP em `app/cred/` (se OCR estiver habilitado)
 
-### Subir tudo (backend + frontend)
+### Subir backend + frontend
 
 ```bash
 docker compose up --build
@@ -175,71 +160,43 @@ docker compose up --build
 
 ### URLs
 
-- Backend API: `http://localhost:8000`
-- Docs (se `DEBUG=true`): `http://localhost:8000/docs`
+- API: `http://localhost:8000`
+- Docs: `http://localhost:8000/docs` (quando `DEBUG=true`)
 - Frontend: `http://localhost:5173`
 
 ### Comandos úteis
 
 ```bash
-# Rodar em segundo plano
 docker compose up -d
-
-# Ver logs
-docker compose logs -f
-
-# Parar e remover containers
+docker compose logs -f backend
 docker compose down
 ```
 
 ---
 
-## 🚀 Deploy na Vercel (Front + Back)
+## 🧪 Teste rápido da análise
 
-Este repositório está preparado para deploy em **2 projetos separados na Vercel**:
+No PowerShell 5.1 (sem `-Form`):
 
-### 1) Backend (FastAPI)
-
-- Projeto Vercel apontando para a **raiz do repositório**
-- Entry point serverless: `api/index.py`
-- Configuração: `vercel.json` na raiz
-
-Variáveis recomendadas no projeto de backend:
-
-```
-DATABASE_URL
-SUPABASE_URL
-SUPABASE_ANON_KEY
-SUPABASE_SERVICE_KEY
-STORAGE_BUCKET
-STORAGE_BUCKET_FOTOS
-HF_SPACE_URL
-HF_TOKEN
-GOOGLE_BOOKS_API_KEY
-MISTRAL_API_KEY
-APP_ENV=production
-DEBUG=false
-ALLOWED_ORIGINS=https://SEU-FRONT.vercel.app
+```powershell
+$img = "$env:USERPROFILE\Downloads\aaaa.jpg"
+curl.exe -X POST "http://localhost:8000/api/v1/analise/" -F "foto=@$img"
 ```
 
-Observação: `ALLOWED_ORIGINS` aceita domínio único ou múltiplos domínios separados por vírgula.
+---
 
-### 2) Frontend (React + Vite)
-
-- Projeto Vercel apontando para a pasta `frontend`
-- Build command: `npm run build`
-- Output directory: `dist`
-
-Variável obrigatória no projeto de frontend:
+## 📁 Estrutura resumida
 
 ```
-VITE_API_URL=https://SEU-BACK.vercel.app/api/v1
+LivroAI/
+├── app/
+│   ├── core/
+│   ├── models/
+│   ├── routers/
+│   ├── schemas/
+│   └── services/
+├── frontend/
+├── docker-compose.yml
+├── Dockerfile.backend
+└── requirements.txt
 ```
-
-### Fluxo recomendado
-
-1. Deploy do backend
-2. Copiar URL do backend (`https://...vercel.app`)
-3. Configurar `VITE_API_URL` no frontend
-4. Deploy do frontend
-5. Atualizar `ALLOWED_ORIGINS` no backend com a URL final do frontend
