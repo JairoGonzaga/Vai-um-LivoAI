@@ -7,11 +7,12 @@ settings = get_settings()
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=2,
+    max_overflow=0,
     pool_pre_ping=True,
+    pool_recycle=3600,
     connect_args={
-        "prepared_statement_cache_size": 0,  # asyncpg usa esse nome
+        "prepared_statement_cache_size": 0,
         "statement_cache_size": 0,
     }
 )
