@@ -1,4 +1,4 @@
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sessao import Sessao
@@ -13,18 +13,28 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
 
     imagem_bytes = await foto.read()
 
+    resultado_yolo = await yolo_service.detectar(imagem_bytes, foto.content_type)
+    bboxes = resultado_yolo.get("bboxes", [])
+
+    if not bboxes:
+        raise HTTPException(
+            status_code=422,
+            detail="Nenhuma lombada detectada para OCR na imagem enviada.",
+        )
+
+    textos_ocr = await ocr_service.extrair_textos_segmentados(imagem_bytes, bboxes)
+    if not textos_ocr:
+        raise HTTPException(
+            status_code=422,
+            detail="OCR não retornou texto válido. Verifique as credenciais do Google Vision e a qualidade da imagem.",
+        )
+
     sessao = Sessao()
     db.add(sessao)
     await db.flush()  
 
     imagem_url = await storage_service.upload(foto, imagem_bytes)
-
-    resultado_yolo = await yolo_service.detectar(imagem_bytes, foto.content_type)
-    nomes_brutos   = resultado_yolo.get("nomes_detectados", [])
-    bboxes         = resultado_yolo.get("bboxes", [])
-    textos_ocr     = await ocr_service.extrair_textos_segmentados(imagem_bytes, bboxes)
-
-    entradas_ia = textos_ocr if textos_ocr else nomes_brutos
+    entradas_ia = textos_ocr
 
     analise = AnaliseYolo(
         sessao_id=sessao.id,
