@@ -38,12 +38,22 @@ def _obter_vision_client_env_json():
         logger.warning("google-cloud-vision não disponível: %s", str(error))
         return None
 
-    cred_json = (
-        (settings.GOOGLE_VISION_SERVICE_ACCOUNT_JSON or "").strip()
-        or (os.getenv("GOOGLE_VISION_CREDENTIALS") or "").strip()
-    )
+    cred_json_config = (settings.GOOGLE_VISION_SERVICE_ACCOUNT_JSON or "").strip()
+    cred_json_from_settings = (settings.GOOGLE_VISION_CREDENTIALS or "").strip()
+    cred_json = cred_json_from_settings or cred_json_config
+
     if not cred_json:
+        logger.warning(
+            "GOOGLE_VISION_CREDENTIALS e GOOGLE_VISION_SERVICE_ACCOUNT_JSON vazios. Nenhuma chave de serviço configurada."
+        )
         return None
+
+    logger.info(
+        "Tentando inicializar Google Vision com JSON do settings/env (tamanho: %d bytes, começa com: %s, termina com: %s)",
+        len(cred_json),
+        cred_json[:30] if len(cred_json) > 30 else cred_json,
+        cred_json[-10:] if len(cred_json) > 10 else cred_json,
+    )
 
     try:
         info = json.loads(cred_json)
