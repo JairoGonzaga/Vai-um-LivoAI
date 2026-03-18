@@ -128,22 +128,6 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 YOLO_CONFIDENCE_THRESHOLD=0.6
 ```
 
-### OCR Google Vision (Service Account)
-
-No `docker-compose.yml`, o backend usa:
-
-```
-GOOGLE_APPLICATION_CREDENTIALS=/app/app/cred/hybrid-cabinet-485920-a4-e0569960d34e.json
-```
-
-Importante:
-
-- o arquivo JSON de credencial deve existir localmente em `app/cred/`
-- **não** versionar credenciais no Git
-- billing e Vision API devem estar habilitados no projeto GCP usado
-
----
-
 ## 🐳 Execução local (Docker)
 
 ### Pré-requisitos
