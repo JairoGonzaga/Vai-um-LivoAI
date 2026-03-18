@@ -30,6 +30,8 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
+app.router.redirect_slashes = False
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins = settings.allowed_origins_list,

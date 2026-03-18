@@ -35,7 +35,7 @@ export const analiseApi = {
     const formData = new FormData();
     formData.append("foto", file);
 
-    const { data } = await api.post("/analise", formData, {
+    const { data } = await api.post("/analise/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
