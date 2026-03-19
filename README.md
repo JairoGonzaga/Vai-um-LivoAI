@@ -66,6 +66,19 @@ Observação: nomes não encontrados no Google Books são ignorados sem derrubar
 
 ---
 
+## 🚨 Diagnóstico de 504 no Vercel
+
+Quando o endpoint `POST /api/v1/analise/` recebe imagens grandes, o processamento (YOLO + OCR + IA) pode exceder o tempo da função serverless e retornar `504`.
+
+- `vercel.json` define `maxDuration` e `memory` para `app/core/main.py`
+- o backend registra logs por requisição com duração (`request.started`, `request.finished`, `request.failed`)
+- o fluxo de análise registra tempos por etapa (`yolo_concluido`, `ocr_concluido`, etc.)
+- o frontend envia `x-client-request-id` e exibe o `req id` no erro para correlação com logs
+
+Se ainda houver `504`, valide os limites do seu plano no Vercel (o valor de `maxDuration` é limitado pelo plano).
+
+---
+
 ## 🗄️ Modelo de dados
 
 ```

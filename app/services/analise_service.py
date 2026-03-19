@@ -1,5 +1,7 @@
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+import time
 
 from app.models.sessao import Sessao
 from app.models.analise_yolo import AnaliseYolo
@@ -8,6 +10,8 @@ from app.schemas.sessao import SessaoResultado
 from app.schemas.livro import LivroResponse
 from app.schemas.recomendacao import RecomendacaoResponse
 from app.services import storage_service, livro_service, yolo_service, ia_service, ocr_service
+
+logger = logging.getLogger("livroai.analise")
 
 
 def _deduplicar_nomes(items: list[str]) -> list[str]:
@@ -29,11 +33,17 @@ def _deduplicar_nomes(items: list[str]) -> list[str]:
     return unicos
 
 async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
+    total_start = time.perf_counter()
+    logger.info("analise.started filename=%s content_type=%s", foto.filename, foto.content_type)
 
+    step_start = time.perf_counter()
     imagem_bytes = await foto.read()
+    logger.info("analise.step arquivo_lido bytes=%s duration_ms=%s", len(imagem_bytes), int((time.perf_counter() - step_start) * 1000))
 
+    step_start = time.perf_counter()
     resultado_yolo = await yolo_service.detectar(imagem_bytes, foto.content_type)
     bboxes = resultado_yolo.get("bboxes", [])
+    logger.info("analise.step yolo_concluido bboxes=%s duration_ms=%s", len(bboxes), int((time.perf_counter() - step_start) * 1000))
 
     if not bboxes:
         raise HTTPException(
@@ -41,7 +51,9 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
             detail="Nenhuma lombada detectada para OCR na imagem enviada.",
         )
 
+    step_start = time.perf_counter()
     textos_ocr = await ocr_service.extrair_textos_segmentados(imagem_bytes, bboxes)
+    logger.info("analise.step ocr_concluido textos=%s duration_ms=%s", len(textos_ocr), int((time.perf_counter() - step_start) * 1000))
     if not textos_ocr:
         raise HTTPException(
             status_code=422,
@@ -52,7 +64,9 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     db.add(sessao)
     await db.flush()  
 
+    step_start = time.perf_counter()
     imagem_url = await storage_service.upload(foto, imagem_bytes)
+    logger.info("analise.step upload_storage_concluido duration_ms=%s", int((time.perf_counter() - step_start) * 1000))
     entradas_ia = textos_ocr
 
     analise = AnaliseYolo(
@@ -64,14 +78,21 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     )
     db.add(analise)
 
+    step_start = time.perf_counter()
     nomes_limpos = _deduplicar_nomes(await ia_service.limpar_nomes(entradas_ia))
+    logger.info("analise.step limpeza_nomes_concluida nomes=%s duration_ms=%s", len(nomes_limpos), int((time.perf_counter() - step_start) * 1000))
 
+    step_start = time.perf_counter()
     livros_encontrados = []
     for nome in nomes_limpos:
         livro = await livro_service.get_or_fetch(db, nome)
         if livro is not None:
             livros_encontrados.append(livro)
+    logger.info("analise.step livros_enriquecidos total=%s duration_ms=%s", len(livros_encontrados), int((time.perf_counter() - step_start) * 1000))
+
+    step_start = time.perf_counter()
     recomendacoes_ia = await ia_service.gerar_recomendacoes(nomes_limpos)
+    logger.info("analise.step recomendacoes_geradas total=%s duration_ms=%s", len(recomendacoes_ia), int((time.perf_counter() - step_start) * 1000))
 
     recomendacoes_salvas = []
     nomes_recomendados_processados = set()
@@ -116,6 +137,14 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
         )
 
     await db.commit()
+
+    logger.info(
+        "analise.finished sessao_id=%s livros=%s recomendacoes=%s duration_ms=%s",
+        sessao.id,
+        len(livros_encontrados),
+        len(recomendacoes_salvas),
+        int((time.perf_counter() - total_start) * 1000),
+    )
 
     return SessaoResultado(
         sessao_id=sessao.id,

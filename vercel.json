@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "functions": {
+    "app/core/main.py": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  },
   "builds": [
     {
       "src": "app/core/main.py",

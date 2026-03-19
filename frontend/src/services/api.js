@@ -7,6 +7,18 @@ const api = axios.create({
   timeout: 30000,
 });
 
+api.interceptors.request.use((config) => {
+  const requestId =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `req-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+
+  config.headers = config.headers ?? {};
+  config.headers["x-client-request-id"] = requestId;
+  config.metadata = { ...(config.metadata ?? {}), requestId };
+  return config;
+});
+
 if (!configuredApiUrl) {
   console.warn(
     "VITE_API_URL não configurada. Usando baseURL relativa '/api/v1'."
@@ -23,6 +35,9 @@ api.interceptors.response.use(
       status: error?.response?.status,
       detail: error?.response?.data?.detail,
       vercelRequestId: error?.response?.headers?.["x-vercel-id"],
+      requestId:
+        error?.response?.headers?.["x-request-id"] ??
+        error?.config?.metadata?.requestId,
       data: error?.response?.data,
     });
 

@@ -32,11 +32,15 @@ export default function Home() {
       const status = error?.response?.status;
       const detalhe = error?.response?.data?.detail;
       const vercelRequestId = error?.response?.headers?.["x-vercel-id"];
+      const requestId =
+        error?.response?.headers?.["x-request-id"] ??
+        error?.config?.metadata?.requestId;
 
       console.error("Falha no upload/análise", {
         status,
         detalhe,
         vercelRequestId,
+        requestId,
         data: error?.response?.data,
       });
 
@@ -47,8 +51,10 @@ export default function Home() {
       } else if (status) {
         setErro(
           vercelRequestId
-            ? `Falha ao analisar imagem (HTTP ${status}) · req ${vercelRequestId}`
-            : `Falha ao analisar imagem (HTTP ${status}).`
+            ? `Falha ao analisar imagem (HTTP ${status}) · req ${requestId ?? vercelRequestId}`
+            : requestId
+              ? `Falha ao analisar imagem (HTTP ${status}) · req ${requestId}`
+              : `Falha ao analisar imagem (HTTP ${status}).`
         );
       } else {
         setErro("Falha ao analisar imagem.");
