@@ -1,6 +1,7 @@
 import json
 import httpx
 import logging
+import asyncio
 
 from app.core.config import get_settings
 
@@ -9,22 +10,44 @@ settings = get_settings()
 
 
 async def _chamar_mistral(prompt: str, temperature: float = 0.4) -> str:
+    ultima_excecao = None
+
     async with httpx.AsyncClient() as client:
-        resposta = await client.post(
-            "https://api.mistral.ai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.MISTRAL_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "mistral-large-latest",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": temperature,
-            },
-            timeout=30,
-        )
-        resposta.raise_for_status()
-        return resposta.json()["choices"][0]["message"]["content"]
+        for tentativa in range(1, 3):
+            try:
+                resposta = await client.post(
+                    "https://api.mistral.ai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.MISTRAL_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "mistral-large-latest",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": temperature,
+                    },
+                    timeout=30,
+                )
+                resposta.raise_for_status()
+                return resposta.json()["choices"][0]["message"]["content"]
+            except (httpx.HTTPStatusError, httpx.TimeoutException, httpx.HTTPError) as error:
+                ultima_excecao = error
+
+                status = getattr(getattr(error, "response", None), "status_code", None)
+                logger.warning(
+                    "ia.mistral_call_failed tentativa=%s status=%s erro=%s",
+                    tentativa,
+                    status,
+                    str(error),
+                )
+
+                if tentativa < 2:
+                    await asyncio.sleep(0.5)
+
+    if ultima_excecao:
+        raise ultima_excecao
+
+    raise RuntimeError("Falha inesperada ao chamar Mistral")
 
 
 def _extrair_json(texto: str, tipo: str = "lista") -> list:
@@ -70,13 +93,19 @@ Sua tarefa:
 Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem backticks:
 [\"Título Correto 1\", \"Título Correto 2\"]"""
 
-    texto = await _chamar_mistral(prompt, temperature=0.1)
-    logger.debug("ia.limpar_nomes resposta IA (primeiros 1000 chars): %s", texto[:1000])
-    
-    resultado = _extrair_json(texto, tipo="lista")
-    logger.info("ia.limpar_nomes completado com %s nomes após parsing", len(resultado))
-    
-    return resultado
+    try:
+        texto = await _chamar_mistral(prompt, temperature=0.1)
+        logger.debug("ia.limpar_nomes resposta IA (primeiros 1000 chars): %s", texto[:1000])
+
+        resultado = _extrair_json(texto, tipo="lista")
+        logger.info("ia.limpar_nomes completado com %s nomes após parsing", len(resultado))
+        return resultado
+    except Exception as error:
+        logger.error("ia.limpar_nomes fallback por indisponibilidade da IA: %s", str(error))
+
+        fallback = [str(item or "").strip() for item in nomes_brutos if str(item or "").strip()]
+        logger.info("ia.limpar_nomes usando fallback com %s nomes", len(fallback))
+        return fallback
 
 
 async def gerar_recomendacoes(livros_detectados: list[str]) -> list[dict]:
@@ -101,5 +130,9 @@ Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem b
 
 Tipos válidos para tipo_recomendacao: por_genero, por_autor, por_tema, similar"""
 
-    texto = await _chamar_mistral(prompt, temperature=0.7)
-    return _extrair_json(texto, tipo="lista")
+    try:
+        texto = await _chamar_mistral(prompt, temperature=0.7)
+        return _extrair_json(texto, tipo="lista")
+    except Exception as error:
+        logger.error("ia.gerar_recomendacoes indisponível, retornando vazio: %s", str(error))
+        return []
