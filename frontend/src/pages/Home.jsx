@@ -109,7 +109,6 @@ export default function Home() {
           >
             Analisar minha estante
           </button>
-          <button className="btn-ghost">Ver exemplo</button>
         </div>
 
         {/* Decorative spines */}

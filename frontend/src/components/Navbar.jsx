@@ -7,13 +7,13 @@ export default function Navbar({ onNavigate }) {
         Livro<span>AI</span>
       </div>
       <ul className={styles.navLinks}>
-        <li><a onClick={() => onNavigate('home')}>Como funciona</a></li>
-        <li><a onClick={() => onNavigate('home')}>Catálogo</a></li>
-        <li><a onClick={() => onNavigate('historico')}>Sessões</a></li>
+        <li><a onClick={() => onNavigate('home')}>Início</a></li>
+        <li><a onClick={() => onNavigate('catalogo')}>Catálogo</a></li>
+        <li><a onClick={() => onNavigate('historico')}>Histórico</a></li>
       </ul>
       <button 
         className={styles.navCta}
-        onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
+        onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' }) || onNavigate('home')}
       >
         Analisar estante
       </button>
