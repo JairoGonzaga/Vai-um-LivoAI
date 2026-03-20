@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     DEBUG:      bool = False
     PORT:       int  = 8000
 
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
-    ALLOWED_ORIGIN_REGEX: str = r"^https://([a-zA-Z0-9-]+\.)*vercel\.app$|^http://localhost(:\d+)?$"
+    ALLOWED_ORIGINS: str 
+    ALLOWED_ORIGIN_REGEX: str 
 
     YOLO_CONFIDENCE_THRESHOLD: float = 0.6
 
