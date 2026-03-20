@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str 
     ALLOWED_ORIGIN_REGEX: str 
 
-    YOLO_CONFIDENCE_THRESHOLD: float = 0.6
+    YOLO_CONFIDENCE_THRESHOLD: float
 
     model_config = SettingsConfigDict(
         env_file=".env",
