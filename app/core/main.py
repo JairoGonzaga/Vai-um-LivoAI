@@ -38,6 +38,15 @@ app = FastAPI(
 
 app.router.redirect_slashes = False
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins = settings.allowed_origins_list,
+    allow_origin_regex=settings.ALLOWED_ORIGIN_REGEX or None,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
+)
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -72,15 +81,6 @@ async def log_requests(request: Request, call_next):
         elapsed_ms,
     )
     return response
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins = settings.allowed_origins_list,
-    allow_origin_regex=settings.ALLOWED_ORIGIN_REGEX or None,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
-)
 
 app.include_router(livro.router,  prefix=f"{settings.API_PREFIX}/livros",  tags=["Livros"])
 app.include_router(analise.router, prefix=f"{settings.API_PREFIX}/analise", tags=["Analise"])

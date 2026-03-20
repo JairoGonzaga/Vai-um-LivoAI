@@ -138,7 +138,7 @@ API_PREFIX=/api/v1
 DEBUG=true
 PORT=8000
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-ALLOWED_ORIGIN_REGEX=^https://([a-zA-Z0-9-]+\.)*vercel\.app$
+ALLOWED_ORIGIN_REGEX=^https://([a-zA-Z0-9-]+\.)*vercel\.app$|^http://localhost(:\d+)?$
 YOLO_CONFIDENCE_THRESHOLD=0.6
 ```
 

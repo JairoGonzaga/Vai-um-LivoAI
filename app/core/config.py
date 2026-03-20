@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     PORT:       int  = 8000
 
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
-    ALLOWED_ORIGIN_REGEX: str = r"^https://([a-zA-Z0-9-]+\.)*vercel\.app$"
+    ALLOWED_ORIGIN_REGEX: str = r"^https://([a-zA-Z0-9-]+\.)*vercel\.app$|^http://localhost(:\d+)?$"
 
     YOLO_CONFIDENCE_THRESHOLD: float = 0.6
 
@@ -39,18 +39,25 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> list[str]:
         value = (self.ALLOWED_ORIGINS or "").strip()
+        origins = []
+        
         if not value:
-            return []
-
-        if value.startswith("["):
+            origins = []
+        elif value.startswith("["):
             try:
                 parsed = json.loads(value)
                 if isinstance(parsed, list):
-                    return [str(item).strip() for item in parsed if str(item).strip()]
+                    origins = [str(item).strip() for item in parsed if str(item).strip()]
             except json.JSONDecodeError:
-                pass
-
-        return [item.strip() for item in value.split(",") if item.strip()]
+                origins = []
+        else:
+            origins = [item.strip() for item in value.split(",") if item.strip()]
+        
+        # Always allow localhost in dev
+        if self.APP_ENV == "development" or self.DEBUG:
+            origins.extend(["http://localhost:3000", "http://localhost:5173"])
+        
+        return origins
 
 
 @lru_cache
