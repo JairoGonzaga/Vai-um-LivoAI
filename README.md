@@ -59,9 +59,6 @@
 | **OCR** | Google Cloud Vision | Robustez em lombadas inglesas/tortas |
 | **IA** | Mistral API | Custo-benefício, regra europeia |
 | **Frontend** | React 18 + Vite | Fast HMR, bundling otimizado |
-| **State** | Zustand | Simplicidade vs Redux |
-| **Styling** | CSS Modules + Variables | Componentização, temas |
-| **HTTP** | Axios | Interceptors para request IDs |
 | **Deploy** | Vercel | Python runtime, scaling automático |
 
 ---
