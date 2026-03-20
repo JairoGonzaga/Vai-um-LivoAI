@@ -43,6 +43,12 @@ async def _extrair_json(texto: str, tipo: str = "lista") -> list:
                 return resultado
             except json.JSONDecodeError as e:
                 logger.warning("ia.json_parse_failed ao tentar extrair JSON da posição %s-%s: %s", inicio, fim, str(e))
+        logger.error("ia.json_parse_failed nenhum JSON delimitador encontrado")
+        return []
+
+
+async def limpar_nomes(nomes_brutos: list[str]) -> list[str]:
+    if not nomes_brutos:
         logger.info("ia.limpar_nomes entrada vazia")
         return []
 
@@ -50,19 +56,19 @@ async def _extrair_json(texto: str, tipo: str = "lista") -> list:
     logger.debug("ia.limpar_nomes nomes recebidos: %s", nomes_brutos)
 
     prompt = f"""Você recebeu os seguintes textos extraídos por OCR de capas de livros.
-        Eles podem conter erros de digitação, caracteres errados, fragmentos e ruídos:
-        {json.dumps(nomes_brutos, ensure_ascii=False)}
+Eles podem conter erros de digitação, caracteres errados, fragmentos e ruídos:
+{json.dumps(nomes_brutos, ensure_ascii=False)}
 
-        Sua tarefa:
-        1. Identificar quais são títulos reais de livros
-        2. Corrigir erros de OCR (ex: \"HOBB1T\" → \"O Hobbit\", \"198 Orwell\" → \"1984\")
-        3. Completar títulos fragmentados quando possível (ex: \"SENHOR DOS ANE\" → \"O Senhor dos Anéis\")
-        4. Ignorar textos que claramente não são títulos de livros
-        5. Responder apenas com uma lista JSON dos títulos corrigidos, sem explicações ou texto adicional.
-        6. Se não conseguir identificar nenhum título válido, responda com uma lista vazia: [].
+Sua tarefa:
+1. Identificar quais são títulos reais de livros
+2. Corrigir erros de OCR (ex: \"HOBB1T\" → \"O Hobbit\", \"198 Orwell\" → \"1984\")
+3. Completar títulos fragmentados quando possível (ex: \"SENHOR DOS ANE\" → \"O Senhor dos Anéis\")
+4. Ignorar textos que claramente não são títulos de livros
+5. Responder apenas com uma lista JSON dos títulos corrigidos, sem explicações ou texto adicional.
+6. Se não conseguir identificar nenhum título válido, responda com uma lista vazia: [].
 
-        Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem backticks:
-        [\"Título Correto 1\", \"Título Correto 2\"]"""
+Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem backticks:
+[\"Título Correto 1\", \"Título Correto 2\"]"""
 
     texto = await _chamar_mistral(prompt, temperature=0.1)
     logger.debug("ia.limpar_nomes resposta IA (primeiros 1000 chars): %s", texto[:1000])
