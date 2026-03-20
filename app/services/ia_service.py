@@ -27,7 +27,7 @@ async def _chamar_mistral(prompt: str, temperature: float = 0.4) -> str:
         return resposta.json()["choices"][0]["message"]["content"]
 
 
-async def _extrair_json(texto: str, tipo: str = "lista") -> list:
+def _extrair_json(texto: str, tipo: str = "lista") -> list:
     abre = "[" if tipo == "lista" else "{"
     fecha = "]" if tipo == "lista" else "}"
     try:
