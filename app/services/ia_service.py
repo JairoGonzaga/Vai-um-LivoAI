@@ -69,7 +69,7 @@ async def gerar_recomendacoes(livros_detectados: list[str]) -> list[dict]:
 Com base nos seguintes livros encontrados na estante do usuário:
 {json.dumps(livros_detectados, ensure_ascii=False)}
 
-Gere exatamente 10 recomendações de livros que o usuário pode gostar.
+Gere até 6 recomendações de livros que o usuário pode gostar.
 Considere o gênero, autor e tema dos livros da estante para fazer recomendações relevantes.
 Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem backticks:
 [

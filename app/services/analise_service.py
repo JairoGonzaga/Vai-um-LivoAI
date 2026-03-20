@@ -2,6 +2,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 import time
+from typing import Any
 
 from app.models.sessao import Sessao
 from app.models.analise_yolo import AnaliseYolo
@@ -12,6 +13,8 @@ from app.schemas.recomendacao import RecomendacaoResponse
 from app.services import storage_service, livro_service, yolo_service, ia_service, ocr_service
 
 logger = logging.getLogger("livroai.analise")
+MAX_NOMES_PARA_ENRIQUECER = 8
+MAX_RECOMENDACOES_PARA_SALVAR = 6
 
 
 def _deduplicar_nomes(items: list[str]) -> list[str]:
@@ -80,24 +83,29 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
 
     step_start = time.perf_counter()
     nomes_limpos = _deduplicar_nomes(await ia_service.limpar_nomes(entradas_ia))
+    nomes_base = nomes_limpos[:MAX_NOMES_PARA_ENRIQUECER]
     logger.info("analise.step limpeza_nomes_concluida nomes=%s duration_ms=%s", len(nomes_limpos), int((time.perf_counter() - step_start) * 1000))
 
     step_start = time.perf_counter()
     livros_encontrados = []
-    for nome in nomes_limpos:
+    for nome in nomes_base:
         livro = await livro_service.get_or_fetch(db, nome)
         if livro is not None:
             livros_encontrados.append(livro)
     logger.info("analise.step livros_enriquecidos total=%s duration_ms=%s", len(livros_encontrados), int((time.perf_counter() - step_start) * 1000))
 
     step_start = time.perf_counter()
-    recomendacoes_ia = await ia_service.gerar_recomendacoes(nomes_limpos)
+    recomendacoes_ia = await ia_service.gerar_recomendacoes(nomes_base)
     logger.info("analise.step recomendacoes_geradas total=%s duration_ms=%s", len(recomendacoes_ia), int((time.perf_counter() - step_start) * 1000))
 
     recomendacoes_salvas = []
     nomes_recomendados_processados = set()
+    recomendacoes_pendentes: list[tuple[Recomendacao, Any]] = []
 
     for rec in recomendacoes_ia:
+        if len(recomendacoes_pendentes) >= MAX_RECOMENDACOES_PARA_SALVAR:
+            break
+
         nome_recomendado = str(rec.get("nome", "")).strip()
         if not nome_recomendado:
             continue
@@ -122,8 +130,12 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
             tipo_recomendacao=rec.get("tipo_recomendacao"),
         )
         db.add(recomendacao)
+        recomendacoes_pendentes.append((recomendacao, livro))
+
+    if recomendacoes_pendentes:
         await db.flush()
 
+    for recomendacao, livro in recomendacoes_pendentes:
         recomendacoes_salvas.append(
             RecomendacaoResponse(
                 id=recomendacao.id,

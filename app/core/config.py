@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     APP_ENV:    str  = "development"
     APP_NAME:   str  = "LivroAI"
     API_PREFIX: str  = "/api/v1"
-    DEBUG:      bool = True
+    DEBUG:      bool = False
     PORT:       int  = 8000
 
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
