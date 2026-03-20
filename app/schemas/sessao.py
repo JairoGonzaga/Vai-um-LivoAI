@@ -22,5 +22,6 @@ class SessaoResponse(BaseModel):
 
 class SessaoResultado(BaseModel):
     sessao_id:         UUID
+    token:             str
     livros_detectados: list[LivroResponse]
     recomendacoes:     list[RecomendacaoResponse]
