@@ -2,7 +2,6 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 import time
-import secrets
 from typing import Any
 
 from app.models.sessao import Sessao
@@ -64,7 +63,7 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
             detail="OCR não retornou texto válido. Verifique as credenciais do Google Vision e a qualidade da imagem.",
         )
 
-    sessao = Sessao(token=secrets.token_hex(32))
+    sessao = Sessao()
     db.add(sessao)
     await db.flush()  
 
@@ -161,7 +160,6 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
 
     return SessaoResultado(
         sessao_id=sessao.id,
-        token=sessao.token,
         livros_detectados=[LivroResponse.model_validate(l) for l in livros_encontrados],
         recomendacoes=recomendacoes_salvas,
     )

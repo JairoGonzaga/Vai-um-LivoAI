@@ -63,10 +63,8 @@ export const analiseApi = {
 };
 
 export const sessoesApi = {
-  async buscarSessao(sessaoId, token) {
-    const { data } = await api.get(`/sessoes/${sessaoId}`, {
-      headers: { "x-session-token": token },
-    });
+  async buscarSessao(sessaoId) {
+    const { data } = await api.get(`/sessoes/${sessaoId}`);
     return data;
   },
 

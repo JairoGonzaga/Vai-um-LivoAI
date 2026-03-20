@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.models.sessao import Sessao
-from app.models.recomendacao import Recomendacao
 from app.schemas.sessao import SessaoResultado
 from app.schemas.livro import LivroResponse
 from app.schemas.recomendacao import RecomendacaoResponse
@@ -18,7 +17,7 @@ async def buscar(db: AsyncSession, sessao_id: UUID) -> SessaoResultado | None:
         .where(Sessao.id == sessao_id)
         .where(Sessao.expira_em > datetime.now(timezone.utc))
         .options(
-            selectinload(Sessao.recomendacoes).selectinload(Recomendacao.livro)
+            selectinload(Sessao.recomendacoes).selectinload("livro")
         )
     )
     sessao = result.scalar_one_or_none()
@@ -39,7 +38,6 @@ async def buscar(db: AsyncSession, sessao_id: UUID) -> SessaoResultado | None:
 
     return SessaoResultado(
         sessao_id=sessao.id,
-        token=sessao.token,
         livros_detectados=livros_detectados,
         recomendacoes=recomendacoes,
     )

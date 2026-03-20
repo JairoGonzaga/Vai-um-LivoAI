@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import DateTime, text, String
+from sqlalchemy import DateTime, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -22,7 +22,6 @@ class Sessao(Base):
     __tablename__ = "sessoes"
 
     id:        Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    token:     Mapped[str]        = mapped_column(String(64), nullable=False, unique=True, index=True)
     criado_em: Mapped[datetime]   = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     expira_em: Mapped[datetime]   = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now() + interval '24 hours'"))
 

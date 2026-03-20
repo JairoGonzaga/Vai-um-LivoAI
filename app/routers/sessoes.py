@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -15,16 +15,12 @@ router = APIRouter()
 @router.get("/{sessao_id}", response_model=SessaoResultado)
 async def buscar_sessao(
     sessao_id: UUID,
-    x_session_token: str = Header(..., alias="x-session-token"),
-    db:              AsyncSession = Depends(get_db),
+    db:        AsyncSession = Depends(get_db),
 ):
     sessao = await sessao_service.buscar(db, sessao_id)
 
     if not sessao:
         raise HTTPException(status_code=404, detail="Sessão não encontrada ou expirada")
-    
-    if sessao.token != x_session_token:
-        raise HTTPException(status_code=403, detail="Token inválido para esta sessão")
 
     return sessao
 
