@@ -22,13 +22,14 @@ export default function Home() {
   const [step, setStep] = useState(0);
 
   const handleUpload = async (file) => {
+    let progressInterval;
     try {
       setLoading(true);
       setErro(null);
       setStep(0);
 
       // Simula progresso visual
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setStep(prev => (prev < 5 ? prev + 1 : 5));
       }, 1200);
 
@@ -38,6 +39,15 @@ export default function Home() {
       setStep(5);
 
       setResultado(resultado);
+      const totalLivros = resultado?.livros_detectados?.length ?? 0;
+      const totalRecomendacoes = resultado?.recomendacoes?.length ?? 0;
+
+      if (totalLivros === 0 && totalRecomendacoes === 0) {
+        setErro(
+          "Não conseguimos identificar títulos válidos nesta foto. Tente novamente com melhor iluminação, mantendo as lombadas retas e evitando livros muito finos ou parcialmente cobertos."
+        );
+      }
+
       const historicoAtualizado = salvarSessaoNoHistorico(resultado);
       setHistorico(historicoAtualizado);
 
@@ -78,6 +88,9 @@ export default function Home() {
       }
       setStep(0);
     } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setLoading(false);
     }
   };
@@ -178,6 +191,15 @@ export default function Home() {
               </div>
               <div>
                 <UploadFoto onUpload={handleUpload} loading={loading} />
+                <div className={styles.tipsBox}>
+                  <h3 className={styles.tipsTitle}>Dicas para melhorar o resultado</h3>
+                  <ul className={styles.tipsList}>
+                    <li>Use boa iluminação e evite reflexos na lombada.</li>
+                    <li>Mantenha a câmera reta e a estante inteira no enquadramento.</li>
+                    <li>Evite livros extremamente finos, sobrepostos ou cobertos por objetos.</li>
+                    <li>Chegue um pouco mais perto para deixar os títulos legíveis.</li>
+                  </ul>
+                </div>
               </div>
             </div>
             {erro && <div className={styles.errorBox}>{erro}</div>}

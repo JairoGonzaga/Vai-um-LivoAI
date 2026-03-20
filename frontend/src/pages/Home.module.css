@@ -317,6 +317,26 @@
   line-height: 1.6;
 }
 
+.tipsBox {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255,245,220,0.14);
+  background: rgba(255,245,220,0.03);
+  border-radius: 4px;
+}
+
+.tipsTitle {
+  font-size: 0.9rem;
+  margin-bottom: 0.55rem;
+}
+
+.tipsList {
+  margin-left: 1rem;
+  color: #a09880;
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
 .resultFooter {
   display: flex;
   align-items: center;
