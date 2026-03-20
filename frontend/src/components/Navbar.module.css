@@ -1,0 +1,77 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 2.5rem;
+  border-bottom: 1px solid rgba(255, 245, 220, 0.1);
+  background: rgba(13, 12, 10, 0.82);
+  backdrop-filter: blur(12px);
+}
+
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: #e8c97a;
+  font-weight: 400;
+}
+
+.logo span {
+  color: #f5f0e6;
+  font-style: italic;
+}
+
+.navLinks {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a09880;
+}
+
+.navLinks a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.navLinks a:hover {
+  color: #f5f0e6;
+}
+
+.navCta {
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid #e8c97a;
+  color: #e8c97a;
+  padding: 0.45rem 1.2rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+}
+
+.navCta:hover {
+  background: #e8c97a;
+  color: #0d0c0a;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 1rem 1.2rem;
+  }
+  .navLinks {
+    display: none;
+  }
+}

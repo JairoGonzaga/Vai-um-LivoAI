@@ -1,14 +1,25 @@
-export default function RecomendacaoCard({ recomendacao }) {
+import styles from "./RecomendacaoCard.module.css";
+
+export default function RecomendacaoCard({ recomendacao, index = 1 }) {
   const livro = recomendacao?.livro;
 
   return (
-    <article>
-      <h3>{livro?.nome ?? "Livro recomendado"}</h3>
-      {livro?.autor ? <p>Autor: {livro.autor}</p> : null}
-      {recomendacao?.tipo_recomendacao ? (
-        <p>Tipo: {recomendacao.tipo_recomendacao}</p>
-      ) : null}
-      {recomendacao?.justificativa_ia ? <p>{recomendacao.justificativa_ia}</p> : null}
-    </article>
+    <div className={styles.item}>
+      <div className={styles.num}>{String(index).padStart(2, "0")}</div>
+      <div className={styles.content}>
+        <div className={styles.title}>{livro?.nome ?? "Livro recomendado"}</div>
+        {livro?.autor && (
+          <div className={styles.author}>{livro.autor}</div>
+        )}
+        {recomendacao?.justificativa_ia && (
+          <p className={styles.reason}>{recomendacao.justificativa_ia}</p>
+        )}
+        {recomendacao?.tipo_recomendacao && (
+          <div className={styles.tags}>
+            <span className={styles.tag}>{recomendacao.tipo_recomendacao}</span>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

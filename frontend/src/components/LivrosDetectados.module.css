@@ -1,0 +1,65 @@
+.section {
+  margin-bottom: 3rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.card {
+  background: #1e1b17;
+  border: 1px solid rgba(255,245,220,0.1);
+  border-radius: 4px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 180px;
+  transition: all 0.2s;
+}
+
+.card:hover {
+  border-color: rgba(255,245,220,0.2);
+  background: #22201b;
+}
+
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.4;
+  margin-bottom: 0.8rem;
+  word-break: break-word;
+}
+
+.author {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e8c97a;
+  margin-top: auto;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(255,245,220,0.1);
+}
+
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: #a09880;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,19 +1,28 @@
+import styles from "./LivrosDetectados.module.css";
+
 export default function LivrosDetectados({ livros = [] }) {
   if (!livros.length) {
-    return <p>Nenhum livro detectado ainda.</p>;
+    return (
+      <section className={styles.section}>
+        <h2 className="section-title">Livros detectados</h2>
+        <div className={styles.empty}>Nenhum livro detectado ainda.</div>
+      </section>
+    );
   }
 
   return (
-    <section>
-      <h2>Livros detectados</h2>
-      <ul>
+    <section className={styles.section}>
+      <h2 className="section-title">Livros detectados</h2>
+      <div className={styles.grid}>
         {livros.map((livro) => (
-          <li key={livro.id}>
-            <strong>{livro.nome}</strong>
-            {livro.autor ? <span> — {livro.autor}</span> : null}
-          </li>
+          <div key={livro.id} className={styles.card}>
+            <div className={styles.title}>{livro.nome}</div>
+            {livro.autor && (
+              <div className={styles.author}>{livro.autor}</div>
+            )}
+          </div>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }

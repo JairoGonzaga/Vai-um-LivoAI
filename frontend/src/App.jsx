@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Historico from "./pages/Historico";
 
@@ -7,16 +8,7 @@ export default function App() {
 
   return (
     <div>
-      <header>
-        <nav>
-          <button type="button" onClick={() => setPagina("home")}>
-            Home
-          </button>
-          <button type="button" onClick={() => setPagina("historico")}>
-            Histórico
-          </button>
-        </nav>
-      </header>
+      <Navbar currentPage={pagina} onNavigate={setPagina} />
       {pagina === "home" ? <Home /> : <Historico />}
     </div>
   );
