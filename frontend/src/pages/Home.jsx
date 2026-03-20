@@ -61,6 +61,8 @@ export default function Home() {
 
       if (typeof detalhe === "string" && detalhe.trim()) {
         setErro(detalhe);
+      } else if (status === 413) {
+        setErro("A imagem está grande demais para envio. Tente uma foto mais próxima da estante ou com menor resolução.");
       } else if (isTimeout) {
         setErro("A análise demorou mais do que o esperado. Tente novamente com uma imagem menor ou aguarde alguns segundos e tente de novo.");
       } else if (status) {

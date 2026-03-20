@@ -1,11 +1,80 @@
 import axios from "axios";
 
+const MAX_DIMENSAO_IMAGEM = 1600;
+const TAMANHO_ALVO_BYTES = 1_500_000;
+
 const configuredApiUrl = (import.meta.env.VITE_API_URL ?? "").trim();
 
 const api = axios.create({
   baseURL: configuredApiUrl || "/api/v1",
   timeout: 30000,
 });
+
+async function otimizarImagemParaUpload(file) {
+  if (!(file instanceof File) || !file.type?.startsWith("image/")) {
+    return file;
+  }
+
+  const precisaOtimizar = file.size > TAMANHO_ALVO_BYTES || file.type !== "image/jpeg";
+  if (!precisaOtimizar) {
+    return file;
+  }
+
+  const imageUrl = URL.createObjectURL(file);
+
+  try {
+    const imagem = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Não foi possível ler a imagem para otimização"));
+      img.src = imageUrl;
+    });
+
+    const larguraOriginal = imagem.naturalWidth || imagem.width;
+    const alturaOriginal = imagem.naturalHeight || imagem.height;
+
+    if (!larguraOriginal || !alturaOriginal) {
+      return file;
+    }
+
+    const escala = Math.min(1, MAX_DIMENSAO_IMAGEM / Math.max(larguraOriginal, alturaOriginal));
+    const larguraFinal = Math.max(1, Math.round(larguraOriginal * escala));
+    const alturaFinal = Math.max(1, Math.round(alturaOriginal * escala));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = larguraFinal;
+    canvas.height = alturaFinal;
+
+    const contexto = canvas.getContext("2d");
+    if (!contexto) {
+      return file;
+    }
+
+    contexto.drawImage(imagem, 0, 0, larguraFinal, alturaFinal);
+
+    let qualidade = 0.86;
+    let blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", qualidade));
+
+    while (blob && blob.size > TAMANHO_ALVO_BYTES && qualidade > 0.55) {
+      qualidade -= 0.08;
+      blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", qualidade));
+    }
+
+    if (!blob) {
+      return file;
+    }
+
+    const nomeSemExtensao = (file.name || "imagem").replace(/\.[^.]+$/, "");
+    const arquivoOtimizado = new File([blob], `${nomeSemExtensao}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+
+    return arquivoOtimizado.size < file.size ? arquivoOtimizado : file;
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
 
 api.interceptors.request.use((config) => {
   const requestId =
@@ -50,8 +119,9 @@ api.interceptors.response.use(
 
 export const analiseApi = {
   async analisarEstante(file) {
+    const arquivoProcessado = await otimizarImagemParaUpload(file);
     const formData = new FormData();
-    formData.append("foto", file);
+    formData.append("foto", arquivoProcessado);
 
     const { data } = await api.post("/analise/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
