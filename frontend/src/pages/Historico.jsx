@@ -122,8 +122,6 @@ export default function Historico() {
                     <span>{formatarData(item?.salvo_em)}</span>
                   </div>
 
-                  <div className={styles.sessaoId}>{id}</div>
-
                   <div className={styles.cardStats}>
                     <span>{item?.livros_detectados?.length ?? 0} livros</span>
                     <span>{item?.recomendacoes?.length ?? 0} recomendações</span>
