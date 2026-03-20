@@ -1,25 +1,49 @@
 .git
 .gitignore
 .gitattributes
+README.md
+LICENSE
 
-.idea
+# IDE & Dev
+.vscode/
+.idea/
 .venv
-__pycache__
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 
+# Frontend assets (não necessários em backend)
 frontend/node_modules
 frontend/dist
 
+# Python
 node_modules
 dist
 
-api
-
+# Credenciais (NÃO copiar para container)
 .env
-*.log
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.p12
+app/cred/
+app/credentials/
+*credentials*.json
+*serviceaccount*.json
 
-# Credenciais locais
-app/cred
-app/cred/**
+# Logs & temp
+*.log
+logs/
+tmp/
+
+# Testes
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
