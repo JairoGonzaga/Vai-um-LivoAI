@@ -98,26 +98,31 @@ def _ler_texto_google_vision_env_json(imagem_bytes: bytes) -> str:
 
 async def extrair_textos_segmentados(imagem_bytes: bytes, bboxes: list[dict]) -> list[str]:
     if not imagem_bytes or not bboxes:
+        logger.info("ocr.extrair_textos_segmentados entrada vazia")
         return []
 
     try:
         imagem = Image.open(io.BytesIO(imagem_bytes)).convert("RGB")
-    except Exception:
+    except Exception as e:
+        logger.error("ocr.extrair_textos_segmentados falha ao abrir imagem: %s", str(e))
         return []
 
     width, height = imagem.size
+    logger.info("ocr.extrair_textos_segmentados dimensões imagem: %sx%s", width, height)
     textos = []
 
-    for box in bboxes:
+    for i, box in enumerate(bboxes):
         try:
             x1 = max(0, min(width, int(float(box.get("x1", 0)))))
             y1 = max(0, min(height, int(float(box.get("y1", 0)))))
             x2 = max(0, min(width, int(float(box.get("x2", 0)))))
             y2 = max(0, min(height, int(float(box.get("y2", 0)))))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as e:
+            logger.warning("ocr.extrair_textos_segmentados bbox %s - erro ao extrair coordenadas: %s", i, str(e))
             continue
 
         if x2 <= x1 or y2 <= y1:
+            logger.warning("ocr.extrair_textos_segmentados bbox %s - coordenadas inválidas: (%s,%s)-(%s,%s)", i, x1, y1, x2, y2)
             continue
 
         recorte = imagem.crop((x1, y1, x2, y2))
@@ -130,6 +135,7 @@ async def extrair_textos_segmentados(imagem_bytes: bytes, bboxes: list[dict]) ->
         if not texto:
             texto = _ler_texto_google_vision_env_json(recorte_bytes)
 
+        logger.info("ocr.extrair_textos_segmentados bbox %s - texto extraído: '%s'", i, texto[:100] if texto else "(vazio)")
         if texto:
             textos.append(texto)
 
@@ -142,4 +148,5 @@ async def extrair_textos_segmentados(imagem_bytes: bytes, bboxes: list[dict]) ->
         vistos.add(chave)
         unicos.append(texto)
 
+    logger.info("ocr.extrair_textos_segmentados deduplicação: %s textos → %s únicos", len(textos), len(unicos))
     return unicos

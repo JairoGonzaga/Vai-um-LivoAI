@@ -1,8 +1,10 @@
 import json
 import httpx
+import logging
 
 from app.core.config import get_settings
 
+logger = logging.getLogger("livroai.ia")
 settings = get_settings()
 
 
@@ -31,16 +33,21 @@ def _extrair_json(texto: str, tipo: str = "lista") -> list:
     try:
         return json.loads(texto)
     except json.JSONDecodeError:
+        logger.warning("ia.json_parse_failed tentando extrair JSON. Tipo: %s. Texto recebido: %s", tipo, texto[:500])
         inicio = texto.find(abre)
         fim = texto.rfind(fecha) + 1
         if inicio != -1 and fim > inicio:
-            return json.loads(texto[inicio:fim])
+            try:
+                resultado = json.loads(texto[inicio:fim])
+                logger.info("ia.json_parse_recovered extraído com sucesso entre posições %s-%s", inicio, fim)
+                return resultado
+            except json.JSONDecodeError as e:
+                logger.warning("ia.json_parse_failed ao tentar extrair JSON da posição %s-%s: %s", inicio, fim, str(e))
+        logger.info("ia.limpar_nomes entrada vazia")
         return []
 
-
-async def limpar_nomes(nomes_brutos: list[str]) -> list[str]:
-    if not nomes_brutos:
-        return []
+    logger.info("ia.limpar_nomes iniciando com %s nomes", len(nomes_brutos))
+    logger.debug("ia.limpar_nomes nomes recebidos: %s", nomes_brutos)
 
     prompt = f"""Você recebeu os seguintes textos extraídos por OCR de capas de livros.
 Eles podem conter erros de digitação, caracteres errados, fragmentos e ruídos:
@@ -58,7 +65,12 @@ Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem b
 [\"Título Correto 1\", \"Título Correto 2\"]"""
 
     texto = await _chamar_mistral(prompt, temperature=0.1)
-    return _extrair_json(texto, tipo="lista")
+    logger.debug("ia.limpar_nomes resposta IA (primeiros 1000 chars): %s", texto[:1000])
+    
+    resultado = _extrair_json(texto, tipo="lista")
+    logger.info("ia.limpar_nomes completado com %s nomes após parsing", len(resultado))
+    
+    return resultado
 
 
 async def gerar_recomendacoes(livros_detectados: list[str]) -> list[dict]:
