@@ -13,9 +13,12 @@ api.interceptors.request.use((config) => {
       ? crypto.randomUUID()
       : `req-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 
-  config.headers = config.headers ?? {};
-  config.headers["x-client-request-id"] = requestId;
-  config.metadata = { ...(config.metadata ?? {}), requestId };
+  if (config.headers?.set) {
+    config.headers.set("x-client-request-id", requestId);
+  } else {
+    config.headers = config.headers ?? {};
+    config.headers["x-client-request-id"] = requestId;
+  }
   return config;
 });
 
@@ -37,7 +40,7 @@ api.interceptors.response.use(
       vercelRequestId: error?.response?.headers?.["x-vercel-id"],
       requestId:
         error?.response?.headers?.["x-request-id"] ??
-        error?.config?.metadata?.requestId,
+        error?.config?.headers?.["x-client-request-id"],
       data: error?.response?.data,
     });
 

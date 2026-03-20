@@ -34,7 +34,7 @@ export default function Home() {
       const vercelRequestId = error?.response?.headers?.["x-vercel-id"];
       const requestId =
         error?.response?.headers?.["x-request-id"] ??
-        error?.config?.metadata?.requestId;
+        error?.config?.headers?.["x-client-request-id"];
 
       console.error("Falha no upload/análise", {
         status,
