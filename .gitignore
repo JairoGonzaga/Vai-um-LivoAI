@@ -1,80 +1,56 @@
-# Environment
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 !.env.sample
 
-# Credenciais sensíveis
 *.pem
 *.key
 *.crt
 *.p12
-*.json
-!package.json
-!package-lock.json
-!vercel.json
 
-# Google Cloud credentials (sensível)
+# Credenciais GCP / Vision
 app/cred/
-app/credentials/
-*credentials*.json
-*serviceaccount*.json
+app/cred/**
+*-block-*.json
+*-cabinet-*.json
 
-# Python
 __pycache__/
 *.py[cod]
 *.pyd
 *.so
-.Python
-python-version
+.python-version
 .venv/
 venv/
 env/
-ENV/
 
-# Testing
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
 .coverage
 .coverage.*
 htmlcov/
-.tox/
 
-# Database
 *.db
 *.sqlite
 *.sqlite3
 *.log
 logs/
 
-# Arquivos temporários
 uploads/
 media/
 tmp/
-.cache/
 
-# Modelos ML
 app/models/*.pt
 *.onnx
-*.pb
 
-# Frontend
 node_modules/
 dist/
 build/
 .next/
-.vite/
+.cache/
 
-# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# OS
 .DS_Store
 Thumbs.db
-.env.local
