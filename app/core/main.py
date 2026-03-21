@@ -15,6 +15,9 @@ import hmac
 settings = get_settings()
 logger = logging.getLogger("livroai.api")
 
+if settings.ENFORCE_API_KEY and not (settings.API_KEY or "").strip():
+    raise RuntimeError("ENFORCE_API_KEY=true, mas API_KEY não foi configurada.")
+
 if not logging.getLogger().handlers:
     logging.basicConfig(
         level=logging.INFO,
@@ -59,8 +62,9 @@ async def log_requests(request: Request, call_next):
     if request.url.path.startswith(settings.API_PREFIX):
         api_key = (settings.API_KEY or "").strip()
         should_validate_api_key = method.upper() != "OPTIONS"
+        enforce_api_key = bool(settings.ENFORCE_API_KEY)
 
-        if api_key and should_validate_api_key:
+        if enforce_api_key and api_key and should_validate_api_key:
             received_api_key = (request.headers.get("x-api-key") or "").strip()
             if not hmac.compare_digest(received_api_key, api_key):
                 logger.warning(

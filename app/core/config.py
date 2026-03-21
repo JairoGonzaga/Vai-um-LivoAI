@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str 
     ALLOWED_ORIGIN_REGEX: str 
     API_KEY: str = ""
+    ENFORCE_API_KEY: bool = True
     SESSION_TOKEN_SECRET: str = ""
 
     YOLO_CONFIDENCE_THRESHOLD: float

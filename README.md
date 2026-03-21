@@ -162,6 +162,7 @@ ALLOWED_ORIGINS=https://seu-dominio.com
 ALLOWED_ORIGIN_REGEX=^https://([a-zA-Z0-9-]+\.)*vercel\.app$
 YOLO_CONFIDENCE_THRESHOLD=0.6
 API_KEY=sua_api_key_backend
+ENFORCE_API_KEY=true
 SESSION_TOKEN_SECRET=um_segredo_longo_e_aleatorio
 ```
 
@@ -169,14 +170,12 @@ SESSION_TOKEN_SECRET=um_segredo_longo_e_aleatorio
 
 ```bash
 VITE_API_URL=https://seu-backend.com/api/v1
-VITE_API_BASE_PATH=/api/v1
-VITE_API_KEY=sua_api_key_frontend
-VITE_AUTH_STORAGE_KEY=livroai_auth_token
+VITE_API_KEY=sua_api_key_publica_frontend
 ```
 
 - `VITE_API_URL`: endpoint base da API (evita URL hardcoded no código).
-- `VITE_API_KEY`: enviada como header `x-api-key` em todas as requisições.
-- `VITE_AUTH_STORAGE_KEY`: chave usada para ler token de sessão/JWT do `sessionStorage` e enviar como `Authorization: Bearer ...`.
+- `VITE_API_KEY`: chave enviada pelo frontend no header `x-api-key`.
+- `ENFORCE_API_KEY`: habilita validação obrigatória de `x-api-key` no backend.
 - `SESSION_TOKEN_SECRET`: segredo usado para assinar/validar JWT de sessão (`HS256`) no backend.
 
 Veja `.env.example` para template completo.

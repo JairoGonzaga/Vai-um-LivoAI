@@ -4,22 +4,28 @@ const REQUEST_TIMEOUT_MS = 20_000;
 const ANALISE_TIMEOUT_MS = 45_000;
 
 const configuredApiUrl = (import.meta.env.VITE_API_URL ?? "").trim();
-const configuredApiBasePath = (import.meta.env.VITE_API_BASE_PATH ?? "/api/v1").trim();
 const configuredApiKey = (import.meta.env.VITE_API_KEY ?? "").trim();
-const configuredAuthStorageKey = (import.meta.env.VITE_AUTH_STORAGE_KEY ?? "livroai_auth_token").trim();
+if (!configuredApiUrl) {
+  throw new Error("VITE_API_URL não configurada.");
+}
 
-const baseURL = configuredApiUrl || configuredApiBasePath || "/api/v1";
+if (!configuredApiKey) {
+  throw new Error("VITE_API_KEY não configurada.");
+}
+
+const baseURL = configuredApiUrl;
+let runtimeAuthToken = "";
+
+export function setRuntimeAuthToken(token) {
+  runtimeAuthToken = (token ?? "").trim();
+}
+
+export function clearRuntimeAuthToken() {
+  runtimeAuthToken = "";
+}
 
 function getRuntimeAuthToken() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  try {
-    return (window.sessionStorage.getItem(configuredAuthStorageKey) ?? "").trim();
-  } catch {
-    return "";
-  }
+  return runtimeAuthToken;
 }
 
 async function validarMagicBytesImagem(file) {
@@ -77,13 +83,11 @@ api.interceptors.request.use((config) => {
     }
   }
 
-  if (configuredApiKey) {
-    if (config.headers?.set) {
-      config.headers.set("x-api-key", configuredApiKey);
-    } else {
-      config.headers = config.headers ?? {};
-      config.headers["x-api-key"] = configuredApiKey;
-    }
+  if (config.headers?.set) {
+    config.headers.set("x-api-key", configuredApiKey);
+  } else {
+    config.headers = config.headers ?? {};
+    config.headers["x-api-key"] = configuredApiKey;
   }
 
   return config;

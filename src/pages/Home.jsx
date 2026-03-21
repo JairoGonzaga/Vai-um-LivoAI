@@ -1,13 +1,11 @@
 import UploadFoto from "../components/UploadFoto";
 import LivrosDetectados from "../components/LivrosDetectados";
 import RecomendacaoCard from "../components/RecomendacaoCard";
-import { analiseApi } from "../services/api";
+import { analiseApi, setRuntimeAuthToken } from "../services/api";
 import { salvarSessaoNoHistorico } from "../services/sessao";
 import useResultadoStore from "../store/resultadoStore";
 
 export default function Home() {
-  const authStorageKey = (import.meta.env.VITE_AUTH_STORAGE_KEY ?? "livroai_auth_token").trim();
-
   const {
     loading,
     erro,
@@ -27,10 +25,7 @@ export default function Home() {
       const resultado = await analiseApi.analisarEstante(file);
 
       if (resultado?.session_token) {
-        try {
-          window.sessionStorage.setItem(authStorageKey, resultado.session_token);
-        } catch {
-        }
+        setRuntimeAuthToken(resultado.session_token);
       }
 
       setResultado(resultado);

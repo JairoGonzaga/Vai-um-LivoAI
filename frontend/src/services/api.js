@@ -6,12 +6,27 @@ const REQUEST_TIMEOUT_MS = 20_000;
 const ANALISE_TIMEOUT_MS = 45_000;
 
 const configuredApiUrl = (import.meta.env.VITE_API_URL ?? "").trim();
-const configuredApiBasePath = (import.meta.env.VITE_API_BASE_PATH ?? "/api/v1").trim();
 const configuredApiKey = (import.meta.env.VITE_API_KEY ?? "").trim();
-const configuredAuthStorageKey = (import.meta.env.VITE_AUTH_STORAGE_KEY ?? "livroai_auth_token").trim();
 const isDev = Boolean(import.meta.env.DEV);
 
-const baseURL = configuredApiUrl || configuredApiBasePath || "/api/v1";
+if (!configuredApiUrl) {
+  throw new Error("VITE_API_URL não configurada.");
+}
+
+if (!configuredApiKey) {
+  throw new Error("VITE_API_KEY não configurada.");
+}
+
+const baseURL = configuredApiUrl;
+let runtimeAuthToken = "";
+
+export function setRuntimeAuthToken(token) {
+  runtimeAuthToken = (token ?? "").trim();
+}
+
+export function clearRuntimeAuthToken() {
+  runtimeAuthToken = "";
+}
 
 function logWarn(message) {
   if (isDev) {
@@ -26,15 +41,7 @@ function logError(message, payload) {
 }
 
 function getRuntimeAuthToken() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  try {
-    return (window.sessionStorage.getItem(configuredAuthStorageKey) ?? "").trim();
-  } catch {
-    return "";
-  }
+  return runtimeAuthToken;
 }
 
 async function validarMagicBytesImagem(file) {
@@ -168,20 +175,15 @@ api.interceptors.request.use((config) => {
     }
   }
 
-  if (configuredApiKey) {
-    if (config.headers?.set) {
-      config.headers.set("x-api-key", configuredApiKey);
-    } else {
-      config.headers["x-api-key"] = configuredApiKey;
-    }
+  if (config.headers?.set) {
+    config.headers.set("x-api-key", configuredApiKey);
+  } else {
+    config.headers = config.headers ?? {};
+    config.headers["x-api-key"] = configuredApiKey;
   }
 
   return config;
 });
-
-if (!configuredApiUrl) {
-  logWarn(`VITE_API_URL não configurada. Usando baseURL '${baseURL}'.`);
-}
 
 api.interceptors.response.use(
   (response) => response,
@@ -189,14 +191,8 @@ api.interceptors.response.use(
     logError("Erro na API", {
       method: error?.config?.method,
       url: error?.config?.url,
-      baseURL: error?.config?.baseURL,
       status: error?.response?.status,
-      detail: error?.response?.data?.detail,
-      vercelRequestId: error?.response?.headers?.["x-vercel-id"],
-      requestId:
-        error?.response?.headers?.["x-request-id"] ??
-        error?.config?.headers?.["x-client-request-id"],
-      data: error?.response?.data,
+      requestId: error?.response?.headers?.["x-request-id"],
     });
 
     return Promise.reject(error);
