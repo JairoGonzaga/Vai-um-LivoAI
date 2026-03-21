@@ -5,10 +5,12 @@ from app.services import yolo_service
 from app.core.config import get_settings
 from app.core.database import engine
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 import time
 from uuid import uuid4
+import hmac
 
 settings = get_settings()
 logger = logging.getLogger("livroai.api")
@@ -50,6 +52,13 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    if request.url.path.startswith(settings.API_PREFIX):
+        api_key = (settings.API_KEY or "").strip()
+        if api_key:
+            received_api_key = (request.headers.get("x-api-key") or "").strip()
+            if not hmac.compare_digest(received_api_key, api_key):
+                return JSONResponse(status_code=401, content={"detail": "API key inválida"})
+
     request_id = request.headers.get("x-client-request-id") or str(uuid4())
     method = request.method
     path = request.url.path

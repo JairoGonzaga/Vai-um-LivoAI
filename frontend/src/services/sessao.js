@@ -1,7 +1,26 @@
 const STORAGE_KEY = "livroai_historico_sessoes";
 
-export function listarHistoricoSessoes() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+function getSessionStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function getLocalStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function lerStorage(storage) {
+  if (!storage) return [];
+  const raw = storage.getItem(STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -12,21 +31,45 @@ export function listarHistoricoSessoes() {
   }
 }
 
+export function listarHistoricoSessoes() {
+  const sessionStorage = getSessionStorage();
+  const localStorage = getLocalStorage();
+  const historicoSessao = lerStorage(sessionStorage);
+
+  if (historicoSessao.length > 0) {
+    return historicoSessao;
+  }
+
+  const historicoLegado = lerStorage(localStorage);
+  if (historicoLegado.length > 0 && sessionStorage) {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(historicoLegado));
+    localStorage?.removeItem(STORAGE_KEY);
+  }
+
+  return historicoLegado;
+}
+
 export function salvarSessaoNoHistorico(sessao) {
+  const sessionStorage = getSessionStorage();
+  if (!sessionStorage) return [];
+
   const atual = listarHistoricoSessoes();
   const semDuplicata = atual.filter((item) => item.sessao_id !== sessao.sessao_id);
   const proximo = [{ ...sessao, salvo_em: new Date().toISOString() }, ...semDuplicata].slice(0, 30);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(proximo));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(proximo));
   return proximo;
 }
 
 export function removerSessaoDoHistorico(sessaoId) {
+  const sessionStorage = getSessionStorage();
+  if (!sessionStorage) return [];
+
   const atual = listarHistoricoSessoes();
   const proximo = atual.filter((item) => item.sessao_id !== sessaoId);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(proximo));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(proximo));
   return proximo;
 }
 
 export function limparHistoricoSessoes() {
-  localStorage.removeItem(STORAGE_KEY);
+  getSessionStorage()?.removeItem(STORAGE_KEY);
 }

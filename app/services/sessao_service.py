@@ -9,6 +9,7 @@ from app.models.sessao import Sessao
 from app.schemas.sessao import SessaoResultado
 from app.schemas.livro import LivroResponse
 from app.schemas.recomendacao import RecomendacaoResponse
+from app.core.security import gerar_token_sessao
 
 
 async def buscar(db: AsyncSession, sessao_id: UUID) -> SessaoResultado | None:
@@ -38,6 +39,7 @@ async def buscar(db: AsyncSession, sessao_id: UUID) -> SessaoResultado | None:
 
     return SessaoResultado(
         sessao_id=sessao.id,
+        session_token=gerar_token_sessao(sessao.id, sessao.expira_em),
         livros_detectados=livros_detectados,
         recomendacoes=recomendacoes,
     )

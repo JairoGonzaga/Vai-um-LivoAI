@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import UploadFoto from "../components/UploadFoto";
 import LivrosDetectados from "../components/LivrosDetectados";
 import RecomendacaoCard from "../components/RecomendacaoCard";
@@ -8,6 +8,8 @@ import useResultadoStore from "../store/resultadoStore";
 import styles from './Home.module.css';
 
 export default function Home() {
+  const authStorageKey = (import.meta.env.VITE_AUTH_STORAGE_KEY ?? "livroai_auth_token").trim();
+
   const {
     loading,
     erro,
@@ -20,9 +22,19 @@ export default function Home() {
   } = useResultadoStore();
 
   const [step, setStep] = useState(0);
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const handleUpload = async (file) => {
     let progressInterval;
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
       setLoading(true);
       setErro(null);
@@ -33,7 +45,16 @@ export default function Home() {
         setStep(prev => (prev < 5 ? prev + 1 : 5));
       }, 1200);
 
-      const resultado = await analiseApi.analisarEstante(file);
+      const resultado = await analiseApi.analisarEstante(file, {
+        signal: abortController.signal,
+      });
+
+      if (resultado?.session_token) {
+        try {
+          window.sessionStorage.setItem(authStorageKey, resultado.session_token);
+        } catch {
+        }
+      }
       
       clearInterval(progressInterval);
       setStep(5);
@@ -54,6 +75,10 @@ export default function Home() {
       setTimeout(() => setStep(0), 500);
     } catch (error) {
       const isTimeout = error?.code === "ECONNABORTED";
+      const isCanceled =
+        error?.code === "ERR_CANCELED" ||
+        error?.name === "CanceledError" ||
+        error?.name === "AbortError";
       const status = error?.response?.status;
       const detalhe = error?.response?.data?.detail;
       const vercelRequestId = error?.response?.headers?.["x-vercel-id"];
@@ -61,15 +86,19 @@ export default function Home() {
         error?.response?.headers?.["x-request-id"] ??
         error?.config?.headers?.["x-client-request-id"];
 
-      console.error("Falha no upload/análise", {
-        status,
-        detalhe,
-        vercelRequestId,
-        requestId,
-        data: error?.response?.data,
-      });
+      if (import.meta.env.DEV) {
+        console.error("Falha no upload/análise", {
+          status,
+          detalhe,
+          vercelRequestId,
+          requestId,
+          data: error?.response?.data,
+        });
+      }
 
-      if (typeof detalhe === "string" && detalhe.trim()) {
+      if (isCanceled) {
+        setErro("Análise cancelada.");
+      } else if (typeof detalhe === "string" && detalhe.trim()) {
         setErro(detalhe);
       } else if (status === 413) {
         setErro("A imagem está grande demais para envio. Tente uma foto mais próxima da estante ou com menor resolução.");
@@ -91,8 +120,14 @@ export default function Home() {
       if (progressInterval) {
         clearInterval(progressInterval);
       }
+      abortControllerRef.current = null;
       setLoading(false);
     }
+  };
+
+  const cancelarAnalise = () => {
+    abortControllerRef.current?.abort();
+    setStep(0);
   };
 
   const resetDemo = () => {
@@ -211,6 +246,7 @@ export default function Home() {
           <div className={styles.section}>
             <span className="section-label">Processando</span>
             <h2 className={styles.sectionTitle}>Analisando sua estante…</h2>
+            <button className="btn-ghost" onClick={cancelarAnalise}>Cancelar análise</button>
             <div style={{ maxWidth: '480px' }}>
               <div className={styles.progressSteps}>
                 {[

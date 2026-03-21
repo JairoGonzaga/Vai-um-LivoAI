@@ -6,6 +6,8 @@ import { salvarSessaoNoHistorico } from "../services/sessao";
 import useResultadoStore from "../store/resultadoStore";
 
 export default function Home() {
+  const authStorageKey = (import.meta.env.VITE_AUTH_STORAGE_KEY ?? "livroai_auth_token").trim();
+
   const {
     loading,
     erro,
@@ -23,6 +25,14 @@ export default function Home() {
       setErro(null);
 
       const resultado = await analiseApi.analisarEstante(file);
+
+      if (resultado?.session_token) {
+        try {
+          window.sessionStorage.setItem(authStorageKey, resultado.session_token);
+        } catch {
+        }
+      }
+
       setResultado(resultado);
 
       const historicoAtualizado = salvarSessaoNoHistorico(resultado);

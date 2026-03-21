@@ -11,6 +11,7 @@ from app.schemas.sessao import SessaoResultado
 from app.schemas.livro import LivroResponse
 from app.schemas.recomendacao import RecomendacaoResponse
 from app.services import storage_service, livro_service, yolo_service, ia_service, ocr_service
+from app.core.security import gerar_token_sessao
 
 logger = logging.getLogger("livroai.analise")
 MAX_NOMES_PARA_ENRIQUECER = 8
@@ -66,6 +67,7 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     sessao = Sessao()
     db.add(sessao)
     await db.flush()  
+    await db.refresh(sessao, attribute_names=["expira_em"])
 
     step_start = time.perf_counter()
     imagem_url = await storage_service.upload(foto, imagem_bytes)
@@ -160,6 +162,7 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
 
     return SessaoResultado(
         sessao_id=sessao.id,
+        session_token=gerar_token_sessao(sessao.id, sessao.expira_em),
         livros_detectados=[LivroResponse.model_validate(l) for l in livros_encontrados],
         recomendacoes=recomendacoes_salvas,
     )
