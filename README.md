@@ -169,14 +169,23 @@ SESSION_TOKEN_SECRET=um_segredo_longo_e_aleatorio
 ### Frontend (Vite)
 
 ```bash
-VITE_API_URL=https://seu-backend.com/api/v1
-VITE_API_KEY=sua_api_key_publica_frontend
+VITE_PROXY_BASE_PATH=/api/proxy
 ```
 
-- `VITE_API_URL`: endpoint base da API (evita URL hardcoded no código).
-- `VITE_API_KEY`: chave enviada pelo frontend no header `x-api-key`.
+- `VITE_PROXY_BASE_PATH`: rota local do frontend para o proxy server-side.
 - `ENFORCE_API_KEY`: habilita validação obrigatória de `x-api-key` no backend.
 - `SESSION_TOKEN_SECRET`: segredo usado para assinar/validar JWT de sessão (`HS256`) no backend.
+
+### Frontend server-side (Vercel)
+
+No projeto do frontend, configure também variáveis **não VITE** para a função proxy:
+
+```bash
+BACKEND_API_URL=https://seu-backend.com/api/v1
+BACKEND_API_KEY=sua_api_key_backend
+```
+
+Essas variáveis são lidas apenas pela função `frontend/api/proxy/[...path].js` no servidor e não entram no bundle do navegador.
 
 Veja `.env.example` para template completo.
 

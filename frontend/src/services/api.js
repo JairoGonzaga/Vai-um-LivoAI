@@ -5,19 +5,14 @@ const TAMANHO_ALVO_BYTES = 1_500_000;
 const REQUEST_TIMEOUT_MS = 20_000;
 const ANALISE_TIMEOUT_MS = 45_000;
 
-const configuredApiUrl = (import.meta.env.VITE_API_URL ?? "").trim();
-const configuredApiKey = (import.meta.env.VITE_API_KEY ?? "").trim();
+const configuredProxyBasePath = (import.meta.env.VITE_PROXY_BASE_PATH ?? "/api/proxy").trim();
 const isDev = Boolean(import.meta.env.DEV);
 
-if (!configuredApiUrl) {
-  throw new Error("VITE_API_URL não configurada.");
+if (!configuredProxyBasePath) {
+  throw new Error("VITE_PROXY_BASE_PATH não configurada.");
 }
 
-if (!configuredApiKey) {
-  throw new Error("VITE_API_KEY não configurada.");
-}
-
-const baseURL = configuredApiUrl;
+const baseURL = configuredProxyBasePath;
 let runtimeAuthToken = "";
 
 export function setRuntimeAuthToken(token) {
@@ -26,12 +21,6 @@ export function setRuntimeAuthToken(token) {
 
 export function clearRuntimeAuthToken() {
   runtimeAuthToken = "";
-}
-
-function logWarn(message) {
-  if (isDev) {
-    console.warn(message);
-  }
 }
 
 function logError(message, payload) {
@@ -173,13 +162,6 @@ api.interceptors.request.use((config) => {
     } else {
       config.headers.authorization = `Bearer ${token}`;
     }
-  }
-
-  if (config.headers?.set) {
-    config.headers.set("x-api-key", configuredApiKey);
-  } else {
-    config.headers = config.headers ?? {};
-    config.headers["x-api-key"] = configuredApiKey;
   }
 
   return config;
