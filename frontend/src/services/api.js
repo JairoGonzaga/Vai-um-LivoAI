@@ -189,7 +189,8 @@ export const analiseApi = {
     const formData = new FormData();
     formData.append("foto", arquivoProcessado);
 
-    const { data } = await api.post("analise/", formData, {
+    const { data } = await api.post("", formData, {
+      params: { path: "analise/" },
       headers: { "Content-Type": "multipart/form-data" },
       timeout: ANALISE_TIMEOUT_MS,
       signal: options.signal,
@@ -201,33 +202,33 @@ export const analiseApi = {
 
 export const sessoesApi = {
   async buscarSessao(sessaoId) {
-    const { data } = await api.get(`sessoes/${sessaoId}`);
+    const { data } = await api.get("", { params: { path: `sessoes/${sessaoId}` } });
     return data;
   },
 
   async validarSessao(sessaoId) {
-    const { data } = await api.get(`sessoes/${sessaoId}/valida`);
+    const { data } = await api.get("", { params: { path: `sessoes/${sessaoId}/valida` } });
     return data;
   },
 
   async deletarSessao(sessaoId) {
-    await api.delete(`sessoes/${sessaoId}`);
+    await api.delete("", { params: { path: `sessoes/${sessaoId}` } });
   },
 };
 
 export const livrosApi = {
   async listar(params = {}) {
-    const { data } = await api.get("livros", { params });
+    const { data } = await api.get("", { params: { path: "livros", ...params } });
     return data;
   },
 
   async buscarPorIsbn(isbn) {
-    const { data } = await api.get(`livros/${isbn}`);
+    const { data } = await api.get("", { params: { path: `livros/${isbn}` } });
     return data;
   },
 
   async criar(payload) {
-    const { data } = await api.post("livros", payload);
+    const { data } = await api.post("", payload, { params: { path: "livros" } });
     return data;
   },
 };

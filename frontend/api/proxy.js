@@ -5,10 +5,10 @@ export const config = {
 };
 
 function buildTargetUrl(req, backendApiUrl) {
-  const rawPath = req.query.path;
-  const segments = Array.isArray(rawPath) ? rawPath : rawPath ? [rawPath] : [];
   const normalizedBase = backendApiUrl.replace(/\/+$/, "");
+  const rawPath = String(req.query.path ?? "").replace(/^\/+/, "");
   const query = new URLSearchParams();
+
   Object.entries(req.query).forEach(([key, value]) => {
     if (key === "path") return;
     if (Array.isArray(value)) {
@@ -19,8 +19,9 @@ function buildTargetUrl(req, backendApiUrl) {
       query.append(key, String(value));
     }
   });
+
   const queryString = query.toString() ? `?${query.toString()}` : "";
-  const suffix = segments.length ? `/${segments.join("/")}` : "";
+  const suffix = rawPath ? `/${rawPath}` : "";
   return `${normalizedBase}${suffix}${queryString}`;
 }
 
