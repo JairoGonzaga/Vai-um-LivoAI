@@ -5,7 +5,7 @@
   "routes": [
     {
       "src": "/api/proxy/(.*)",
-      "dest": "/api/proxy/$1"
+      "dest": "/api/proxy/[...path]"
     },
     {
       "handle": "filesystem"
