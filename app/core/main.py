@@ -52,16 +52,27 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    if request.url.path.startswith(settings.API_PREFIX):
-        api_key = (settings.API_KEY or "").strip()
-        if api_key:
-            received_api_key = (request.headers.get("x-api-key") or "").strip()
-            if not hmac.compare_digest(received_api_key, api_key):
-                return JSONResponse(status_code=401, content={"detail": "API key inválida"})
-
     request_id = request.headers.get("x-client-request-id") or str(uuid4())
     method = request.method
     path = request.url.path
+
+    if request.url.path.startswith(settings.API_PREFIX):
+        api_key = (settings.API_KEY or "").strip()
+        should_validate_api_key = method.upper() != "OPTIONS"
+
+        if api_key and should_validate_api_key:
+            received_api_key = (request.headers.get("x-api-key") or "").strip()
+            if not hmac.compare_digest(received_api_key, api_key):
+                logger.warning(
+                    "request.blocked id=%s method=%s path=%s reason=invalid_api_key",
+                    request_id,
+                    method,
+                    path,
+                )
+                response = JSONResponse(status_code=401, content={"detail": "API key inválida"})
+                response.headers["x-request-id"] = request_id
+                return response
+
     start = time.perf_counter()
 
     logger.info("request.started id=%s method=%s path=%s", request_id, method, path)
