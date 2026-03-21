@@ -8,8 +8,18 @@ function buildTargetUrl(req, backendApiUrl) {
   const rawPath = req.query.path;
   const segments = Array.isArray(rawPath) ? rawPath : rawPath ? [rawPath] : [];
   const normalizedBase = backendApiUrl.replace(/\/+$/, "");
-  const queryIndex = req.url.indexOf("?");
-  const queryString = queryIndex >= 0 ? req.url.slice(queryIndex) : "";
+  const query = new URLSearchParams();
+  Object.entries(req.query).forEach(([key, value]) => {
+    if (key === "path") return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => query.append(key, String(item)));
+      return;
+    }
+    if (value !== undefined) {
+      query.append(key, String(value));
+    }
+  });
+  const queryString = query.toString() ? `?${query.toString()}` : "";
   const suffix = segments.length ? `/${segments.join("/")}` : "";
   return `${normalizedBase}${suffix}${queryString}`;
 }
