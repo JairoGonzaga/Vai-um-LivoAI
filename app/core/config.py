@@ -12,8 +12,14 @@ class Settings(BaseSettings):
     STORAGE_BUCKET:       str = "Pratileiras"
     STORAGE_BUCKET_FOTOS: str = "Pratileiras"
 
-    HF_SPACE_URL: str
-    HF_TOKEN:     str
+    HF_SPACE_URL: str = ""
+    HF_TOKEN:     str = ""
+
+    ROBOFLOW_API_URL: str = "https://serverless.roboflow.com"
+    ROBOFLOW_API_KEY: str = ""
+    ROBOFLOW_WORKSPACE_NAME: str = ""
+    ROBOFLOW_WORKFLOW_ID: str = ""
+    ROBOFLOW_IMAGE_INPUT_KEY: str = "image"
 
     GOOGLE_BOOKS_API_KEY: str
     GOOGLE_VISION_CREDENTIALS: str = ""
@@ -31,7 +37,7 @@ class Settings(BaseSettings):
     ENFORCE_API_KEY: bool = True
     SESSION_TOKEN_SECRET: str = ""
 
-    YOLO_CONFIDENCE_THRESHOLD: float
+    YOLO_CONFIDENCE_THRESHOLD: float = 0.6
 
     model_config = SettingsConfigDict(
         env_file=".env",

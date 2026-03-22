@@ -29,3 +29,4 @@ psycopg2-binary==2.9.9
 
 # IA
 openai==1.35.0
+inference-sdk==0.51.0

@@ -30,7 +30,7 @@ O fluxo combina **visão computacional** (YOLO), **OCR** (Google Vision), **LLM*
 ## ✨ Funcionalidades
 
 - 📸 Upload de imagem com análise em ~30-60s
-- 🧩 Detecção automática com YOLO (HF Space)
+- 🧩 Detecção automática com YOLO (Roboflow Workflow)
 - 🔎 OCR em lombadas com Google Cloud Vision
 - 🧠 Limpeza de títulos + recomendações com Mistral
 - 📚 Enriquecimento via Google Books API
@@ -48,7 +48,7 @@ O fluxo combina **visão computacional** (YOLO), **OCR** (Google Vision), **LLM*
 | Backend | FastAPI + SQLAlchemy async |
 | Database | Supabase (PostgreSQL) |
 | Storage | Supabase Storage |
-| Detecção | YOLO (Hugging Face Space) |
+| Detecção | YOLO (Roboflow Workflow) |
 | OCR | Google Cloud Vision |
 | IA | Mistral API |
 | Frontend | React 18 + Vite |
@@ -140,9 +140,12 @@ SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_KEY=eyJ...
 
-# Hugging Face (YOLO)
-HF_SPACE_URL=https://huggingface.co/spaces/seu/space/api
-HF_TOKEN=hf_xxx
+# Roboflow (YOLO)
+ROBOFLOW_API_URL=https://serverless.roboflow.com
+ROBOFLOW_API_KEY=rf_xxx
+ROBOFLOW_WORKSPACE_NAME=seu-workspace
+ROBOFLOW_WORKFLOW_ID=seu-workflow
+ROBOFLOW_IMAGE_INPUT_KEY=image
 
 # Google APIs
 GOOGLE_VISION_API_KEY=AIzaSyxxx
