@@ -1,3 +1,4 @@
+import base64
 import httpx
 from fastapi import HTTPException
 
@@ -34,6 +35,24 @@ def _extrair_predictions(payload: dict) -> list[dict]:
              return predictions
 
      return []
+
+
+def _extrair_saida_workflow(corpo: object) -> dict:
+     if isinstance(corpo, dict):
+         outputs = corpo.get("outputs")
+         if isinstance(outputs, list) and outputs:
+             primeiro = outputs[0]
+             if isinstance(primeiro, dict):
+                 return primeiro
+
+         return corpo
+
+     if isinstance(corpo, list) and corpo:
+         primeiro = corpo[0]
+         if isinstance(primeiro, dict):
+             return primeiro
+
+     return {}
 
 
 def _normalizar_bboxes(predictions: list[dict]) -> list[dict]:
@@ -82,34 +101,36 @@ async def detectar(imagem_bytes: bytes, content_type: str) -> dict:
 
      async with httpx.AsyncClient() as client:
          try:
-             arquivo_nome = "foto.jpg"
-             extensao = (content_type or "").split("/")[-1].lower()
-             if extensao in {"png", "webp", "gif", "jpeg", "jpg"}:
-                 arquivo_nome = f"foto.{extensao if extensao != 'jpeg' else 'jpg'}"
+             imagem_b64 = base64.b64encode(imagem_bytes).decode("utf-8")
+             payload = {
+                 "api_key": settings.ROBOFLOW_API_KEY,
+                 "use_cache": True,
+                 "inputs": {
+                     settings.ROBOFLOW_IMAGE_INPUT_KEY: {
+                         "type": "base64",
+                         "value": imagem_b64,
+                     }
+                 },
+             }
 
              resposta = await client.post(
-                 f"{settings.ROBOFLOW_API_URL.rstrip('/')}/{settings.ROBOFLOW_WORKSPACE_NAME}/{settings.ROBOFLOW_WORKFLOW_ID}",
-                 params={"api_key": settings.ROBOFLOW_API_KEY},
-                 files={settings.ROBOFLOW_IMAGE_INPUT_KEY: (arquivo_nome, imagem_bytes, content_type or "image/jpeg")},
+                 f"{settings.ROBOFLOW_API_URL.rstrip('/')}/{settings.ROBOFLOW_WORKSPACE_NAME}/workflows/{settings.ROBOFLOW_WORKFLOW_ID}",
+                 json=payload,
                  timeout=60,
              )
              resposta.raise_for_status()
 
              corpo = resposta.json()
-             if isinstance(corpo, list) and corpo:
-                 payload = corpo[0]
-             elif isinstance(corpo, dict):
-                 payload = corpo
-             else:
-                 payload = {}
+             output = _extrair_saida_workflow(corpo)
 
-             predictions = _extrair_predictions(payload)
+             predictions = _extrair_predictions(output)
              bboxes = _normalizar_bboxes(predictions)
              return {"bboxes": bboxes, "raw": corpo}
          except httpx.TimeoutException:
              raise HTTPException(status_code=504, detail="Timeout na detecção")
          except httpx.HTTPStatusError as e:
-             raise HTTPException(status_code=502, detail=f"Erro no serviço de detecção: {e.response.status_code}")
+             detalhe = e.response.text[:300] if e.response is not None else ""
+             raise HTTPException(status_code=502, detail=f"Erro no serviço de detecção: {e.response.status_code} {detalhe}".strip())
          except httpx.HTTPError:
              raise HTTPException(status_code=502, detail="Serviço de detecção indisponível")
 
