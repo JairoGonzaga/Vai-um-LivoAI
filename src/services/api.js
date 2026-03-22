@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const REQUEST_TIMEOUT_MS = 20_000;
-const ANALISE_TIMEOUT_MS = 45_000;
+const ANALISE_TIMEOUT_MS = 120_000;
 
 const configuredProxyBasePath = (import.meta.env.VITE_PROXY_BASE_PATH ?? "/api/proxy").trim();
 if (!configuredProxyBasePath) {
