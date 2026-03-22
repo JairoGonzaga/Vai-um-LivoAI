@@ -39,56 +39,90 @@ def _deduplicar_nomes(items: list[str]) -> list[str]:
     return unicos
 
 
-async def _buscar_livro_com_limite(db: AsyncSession, nome: str, semaforo: asyncio.Semaphore):
+async def _buscar_google_books_com_limite(nome: str, semaforo: asyncio.Semaphore):
     async with semaforo:
-        return await livro_service.get_or_fetch(db, nome)
+        return await livro_service.buscar_no_google_books(nome)
 
 
-async def _enriquecer_livros_concorrente(db: AsyncSession, nomes: list[str]) -> list[Any]:
+async def _precarregar_google_books(nomes: list[str]) -> dict[str, dict | None]:
+    if not nomes:
+        return {}
+
+    semaforo = asyncio.Semaphore(MAX_CONCORRENCIA_ENRIQUECIMENTO)
+    tarefas = [_buscar_google_books_com_limite(nome, semaforo) for nome in nomes]
+    resultados = await asyncio.gather(*tarefas, return_exceptions=True)
+
+    dados_por_nome: dict[str, dict | None] = {}
+    for nome, resultado in zip(nomes, resultados):
+        if isinstance(resultado, Exception):
+            logger.warning("analise.preload_google_books_falhou nome=%s erro=%s", nome, str(resultado))
+            dados_por_nome[nome] = None
+            continue
+        dados_por_nome[nome] = resultado
+
+    return dados_por_nome
+
+
+async def _enriquecer_livros_com_preload(
+    db: AsyncSession,
+    nomes: list[str],
+    dados_por_nome: dict[str, dict | None],
+) -> list[Any]:
     if not nomes:
         return []
 
-    semaforo = asyncio.Semaphore(MAX_CONCORRENCIA_ENRIQUECIMENTO)
-    tarefas = [_buscar_livro_com_limite(db, nome, semaforo) for nome in nomes]
-    resultados = await asyncio.gather(*tarefas, return_exceptions=True)
-
     livros = []
-    for resultado in resultados:
-        if isinstance(resultado, Exception):
-            logger.warning("analise.livro_enriquecimento_falhou erro=%s", str(resultado))
+    for nome in nomes:
+        try:
+            livro = await livro_service.get_or_fetch(
+                db,
+                nome,
+                dados_google_precarregado=dados_por_nome.get(nome),
+            )
+        except Exception as error:
+            logger.warning("analise.livro_enriquecimento_falhou nome=%s erro=%s", nome, str(error))
             continue
-        if resultado is not None:
-            livros.append(resultado)
+        if livro is not None:
+            livros.append(livro)
 
     return livros
 
 
-async def _processar_recomendacao_com_limite(
+async def _processar_recomendacoes_com_preload(
     db: AsyncSession,
     sessao_id,
-    rec: dict,
-    semaforo: asyncio.Semaphore,
-) -> tuple[Recomendacao, Any] | None:
-    nome_recomendado = str(rec.get("nome", "")).strip()
-    if not nome_recomendado:
-        return None
+    recomendacoes_unicas: list[dict],
+    dados_por_nome: dict[str, dict | None],
+) -> list[tuple[Recomendacao, Any]]:
+    recomendacoes_pendentes: list[tuple[Recomendacao, Any]] = []
 
-    try:
-        async with semaforo:
-            livro = await livro_service.get_or_fetch(db, nome_recomendado)
-    except Exception:
-        return None
+    for rec in recomendacoes_unicas:
+        nome_recomendado = str(rec.get("nome", "")).strip()
+        if not nome_recomendado:
+            continue
 
-    if not livro:
-        return None
+        try:
+            livro = await livro_service.get_or_fetch(
+                db,
+                nome_recomendado,
+                dados_google_precarregado=dados_por_nome.get(nome_recomendado),
+            )
+        except Exception as error:
+            logger.warning("analise.recomendacao_enriquecimento_falhou nome=%s erro=%s", nome_recomendado, str(error))
+            continue
 
-    recomendacao = Recomendacao(
-        sessao_id=sessao_id,
-        livro_id=livro.id,
-        justificativa_ia=rec.get("justificativa"),
-        tipo_recomendacao=rec.get("tipo_recomendacao"),
-    )
-    return recomendacao, livro
+        if not livro:
+            continue
+
+        recomendacao = Recomendacao(
+            sessao_id=sessao_id,
+            livro_id=livro.id,
+            justificativa_ia=rec.get("justificativa"),
+            tipo_recomendacao=rec.get("tipo_recomendacao"),
+        )
+        recomendacoes_pendentes.append((recomendacao, livro))
+
+    return recomendacoes_pendentes
 
 async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     total_start = time.perf_counter()
@@ -143,8 +177,18 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     logger.info("analise.step limpeza_nomes_concluida nomes=%s duration_ms=%s", len(nomes_limpos), int((time.perf_counter() - step_start) * 1000))
 
     step_start = time.perf_counter()
-    livros_encontrados = await _enriquecer_livros_concorrente(db, nomes_base)
+    dados_google_nomes_base = await _precarregar_google_books(nomes_base)
+    logger.info("analise.step preload_google_books_livros total=%s duration_ms=%s", len(dados_google_nomes_base), int((time.perf_counter() - step_start) * 1000))
+
+    step_start = time.perf_counter()
+    livros_encontrados = await _enriquecer_livros_com_preload(db, nomes_base, dados_google_nomes_base)
     logger.info("analise.step livros_enriquecidos total=%s duration_ms=%s", len(livros_encontrados), int((time.perf_counter() - step_start) * 1000))
+    logger.info(
+        "analise.step livros_enriquecidos_resumo entrada=%s saida=%s descartados=%s",
+        len(nomes_base),
+        len(livros_encontrados),
+        max(0, len(nomes_base) - len(livros_encontrados)),
+    )
 
     step_start = time.perf_counter()
     recomendacoes_ia = await ia_service.gerar_recomendacoes(nomes_base)
@@ -169,19 +213,27 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
         nomes_recomendados_processados.add(chave_nome_recomendado)
         recomendacoes_unicas.append(rec)
 
-    semaforo_recomendacoes = asyncio.Semaphore(MAX_CONCORRENCIA_ENRIQUECIMENTO)
-    tarefas_recomendacoes = [
-        _processar_recomendacao_com_limite(db, sessao.id, rec, semaforo_recomendacoes)
-        for rec in recomendacoes_unicas
-    ]
+    nomes_recomendacoes = [str(rec.get("nome", "")).strip() for rec in recomendacoes_unicas if str(rec.get("nome", "")).strip()]
 
-    resultados_recomendacoes = await asyncio.gather(*tarefas_recomendacoes, return_exceptions=True)
-    for resultado in resultados_recomendacoes:
-        if isinstance(resultado, Exception) or resultado is None:
-            continue
-        recomendacao, livro = resultado
+    step_start = time.perf_counter()
+    dados_google_recomendacoes = await _precarregar_google_books(nomes_recomendacoes)
+    logger.info("analise.step preload_google_books_recomendacoes total=%s duration_ms=%s", len(dados_google_recomendacoes), int((time.perf_counter() - step_start) * 1000))
+
+    recomendacoes_pendentes = await _processar_recomendacoes_com_preload(
+        db,
+        sessao.id,
+        recomendacoes_unicas,
+        dados_google_recomendacoes,
+    )
+    logger.info(
+        "analise.step recomendacoes_enriquecidas_resumo entrada=%s saida=%s descartadas=%s",
+        len(recomendacoes_unicas),
+        len(recomendacoes_pendentes),
+        max(0, len(recomendacoes_unicas) - len(recomendacoes_pendentes)),
+    )
+
+    for recomendacao, livro in recomendacoes_pendentes:
         db.add(recomendacao)
-        recomendacoes_pendentes.append((recomendacao, livro))
 
     if recomendacoes_pendentes:
         await db.flush()

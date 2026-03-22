@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 _GOOGLE_BOOKS_CACHE_TTL_SECONDS = 900
 _google_books_cache: dict[str, tuple[float, dict | None]] = {}
 _CACHE_MISS = object()
+_DADOS_GOOGLE_NAO_INFORMADOS = object()
 
 
 def _cache_google_books_get(chave: str) -> dict | None | object:
@@ -117,7 +118,11 @@ async def salvar_livro(db: AsyncSession, livro_data: LivroCreate) -> Livro:
     await db.flush()
     return novo_livro
 
-async def get_or_fetch(db: AsyncSession, nome: str | LivroCreate) -> Livro | None:
+async def get_or_fetch(
+    db: AsyncSession,
+    nome: str | LivroCreate,
+    dados_google_precarregado: dict | None | object = _DADOS_GOOGLE_NAO_INFORMADOS,
+) -> Livro | None:
     if isinstance(nome, LivroCreate):
         nome = nome.nome
 
@@ -130,7 +135,11 @@ async def get_or_fetch(db: AsyncSession, nome: str | LivroCreate) -> Livro | Non
     if livro:
         return livro
     
-    dados_google = await buscar_no_google_books(nome)
+    if dados_google_precarregado is _DADOS_GOOGLE_NAO_INFORMADOS:
+        dados_google = await buscar_no_google_books(nome)
+    else:
+        dados_google = dados_google_precarregado
+
     if not dados_google:
         return None
     

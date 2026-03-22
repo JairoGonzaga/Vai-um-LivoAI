@@ -2,6 +2,7 @@ import json
 import httpx
 import logging
 import asyncio
+import re
 
 from app.core.config import get_settings
 
@@ -53,21 +54,41 @@ async def _chamar_mistral(prompt: str, temperature: float = 0.4) -> str:
 def _extrair_json(texto: str, tipo: str = "lista") -> list:
     abre = "[" if tipo == "lista" else "{"
     fecha = "]" if tipo == "lista" else "}"
-    try:
-        return json.loads(texto)
-    except json.JSONDecodeError:
-        logger.warning("ia.json_parse_failed tentando extrair JSON. Tipo: %s. Texto recebido: %s", tipo, texto[:500])
-        inicio = texto.find(abre)
-        fim = texto.rfind(fecha) + 1
-        if inicio != -1 and fim > inicio:
-            try:
-                resultado = json.loads(texto[inicio:fim])
-                logger.info("ia.json_parse_recovered extraído com sucesso entre posições %s-%s", inicio, fim)
-                return resultado
-            except json.JSONDecodeError as e:
-                logger.warning("ia.json_parse_failed ao tentar extrair JSON da posição %s-%s: %s", inicio, fim, str(e))
-        logger.error("ia.json_parse_failed nenhum JSON delimitador encontrado")
-        return []
+
+    texto_limpo = str(texto or "").strip()
+    candidatos: list[tuple[str, str]] = [("raw", texto_limpo)]
+
+    match_bloco = re.search(r"```(?:json)?\s*(.*?)\s*```", texto_limpo, flags=re.IGNORECASE | re.DOTALL)
+    if match_bloco:
+        candidatos.append(("fenced", match_bloco.group(1).strip()))
+
+    vistos = set()
+    for origem, candidato in candidatos:
+        if not candidato or candidato in vistos:
+            continue
+        vistos.add(candidato)
+        try:
+            resultado = json.loads(candidato)
+            if origem != "raw":
+                logger.info("ia.json_parse_recovered origem=%s", origem)
+            return resultado
+        except json.JSONDecodeError:
+            inicio = candidato.find(abre)
+            fim = candidato.rfind(fecha) + 1
+            if inicio != -1 and fim > inicio:
+                trecho = candidato[inicio:fim]
+                if trecho in vistos:
+                    continue
+                vistos.add(trecho)
+                try:
+                    resultado = json.loads(trecho)
+                    logger.info("ia.json_parse_recovered origem=%s intervalo=%s-%s", origem, inicio, fim)
+                    return resultado
+                except json.JSONDecodeError:
+                    continue
+
+    logger.warning("ia.json_parse_failed tipo=%s texto=%s", tipo, texto_limpo[:500])
+    return []
 
 
 async def limpar_nomes(nomes_brutos: list[str]) -> list[str]:
