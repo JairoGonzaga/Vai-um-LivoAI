@@ -2,6 +2,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 import time
+import asyncio
 from typing import Any
 
 from app.models.sessao import Sessao
@@ -16,6 +17,7 @@ from app.core.security import gerar_token_sessao
 logger = logging.getLogger("livroai.analise")
 MAX_NOMES_PARA_ENRIQUECER = 8
 MAX_RECOMENDACOES_PARA_SALVAR = 6
+MAX_CONCORRENCIA_ENRIQUECIMENTO = 6
 
 
 def _deduplicar_nomes(items: list[str]) -> list[str]:
@@ -35,6 +37,58 @@ def _deduplicar_nomes(items: list[str]) -> list[str]:
         unicos.append(nome)
 
     return unicos
+
+
+async def _buscar_livro_com_limite(db: AsyncSession, nome: str, semaforo: asyncio.Semaphore):
+    async with semaforo:
+        return await livro_service.get_or_fetch(db, nome)
+
+
+async def _enriquecer_livros_concorrente(db: AsyncSession, nomes: list[str]) -> list[Any]:
+    if not nomes:
+        return []
+
+    semaforo = asyncio.Semaphore(MAX_CONCORRENCIA_ENRIQUECIMENTO)
+    tarefas = [_buscar_livro_com_limite(db, nome, semaforo) for nome in nomes]
+    resultados = await asyncio.gather(*tarefas, return_exceptions=True)
+
+    livros = []
+    for resultado in resultados:
+        if isinstance(resultado, Exception):
+            logger.warning("analise.livro_enriquecimento_falhou erro=%s", str(resultado))
+            continue
+        if resultado is not None:
+            livros.append(resultado)
+
+    return livros
+
+
+async def _processar_recomendacao_com_limite(
+    db: AsyncSession,
+    sessao_id,
+    rec: dict,
+    semaforo: asyncio.Semaphore,
+) -> tuple[Recomendacao, Any] | None:
+    nome_recomendado = str(rec.get("nome", "")).strip()
+    if not nome_recomendado:
+        return None
+
+    try:
+        async with semaforo:
+            livro = await livro_service.get_or_fetch(db, nome_recomendado)
+    except Exception:
+        return None
+
+    if not livro:
+        return None
+
+    recomendacao = Recomendacao(
+        sessao_id=sessao_id,
+        livro_id=livro.id,
+        justificativa_ia=rec.get("justificativa"),
+        tipo_recomendacao=rec.get("tipo_recomendacao"),
+    )
+    return recomendacao, livro
 
 async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     total_start = time.perf_counter()
@@ -89,11 +143,7 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     logger.info("analise.step limpeza_nomes_concluida nomes=%s duration_ms=%s", len(nomes_limpos), int((time.perf_counter() - step_start) * 1000))
 
     step_start = time.perf_counter()
-    livros_encontrados = []
-    for nome in nomes_base:
-        livro = await livro_service.get_or_fetch(db, nome)
-        if livro is not None:
-            livros_encontrados.append(livro)
+    livros_encontrados = await _enriquecer_livros_concorrente(db, nomes_base)
     logger.info("analise.step livros_enriquecidos total=%s duration_ms=%s", len(livros_encontrados), int((time.perf_counter() - step_start) * 1000))
 
     step_start = time.perf_counter()
@@ -103,9 +153,10 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
     recomendacoes_salvas = []
     nomes_recomendados_processados = set()
     recomendacoes_pendentes: list[tuple[Recomendacao, Any]] = []
+    recomendacoes_unicas = []
 
     for rec in recomendacoes_ia:
-        if len(recomendacoes_pendentes) >= MAX_RECOMENDACOES_PARA_SALVAR:
+        if len(recomendacoes_unicas) >= MAX_RECOMENDACOES_PARA_SALVAR:
             break
 
         nome_recomendado = str(rec.get("nome", "")).strip()
@@ -116,21 +167,19 @@ async def processar(db: AsyncSession, foto: UploadFile) -> SessaoResultado:
         if chave_nome_recomendado in nomes_recomendados_processados:
             continue
         nomes_recomendados_processados.add(chave_nome_recomendado)
+        recomendacoes_unicas.append(rec)
 
-        try:
-            livro = await livro_service.get_or_fetch(db, nome_recomendado)
-        except Exception:
+    semaforo_recomendacoes = asyncio.Semaphore(MAX_CONCORRENCIA_ENRIQUECIMENTO)
+    tarefas_recomendacoes = [
+        _processar_recomendacao_com_limite(db, sessao.id, rec, semaforo_recomendacoes)
+        for rec in recomendacoes_unicas
+    ]
+
+    resultados_recomendacoes = await asyncio.gather(*tarefas_recomendacoes, return_exceptions=True)
+    for resultado in resultados_recomendacoes:
+        if isinstance(resultado, Exception) or resultado is None:
             continue
-
-        if not livro:
-            continue
-
-        recomendacao = Recomendacao(
-            sessao_id=sessao.id,
-            livro_id=livro.id,
-            justificativa_ia=rec.get("justificativa"),
-            tipo_recomendacao=rec.get("tipo_recomendacao"),
-        )
+        recomendacao, livro = resultado
         db.add(recomendacao)
         recomendacoes_pendentes.append((recomendacao, livro))
 
