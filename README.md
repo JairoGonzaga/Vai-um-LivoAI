@@ -12,7 +12,8 @@
 [🌐 Demo](https://livroai.vercel.app) • [📖 Docs](#-documentação) • [🤝 Contribuir](#-contributing)
 
 </div>
-
+OBS - LEIA ANTES DE QUALQUER COISA - 
+O projeto pode não funcionar devido a falta de creditos do google cloud. Atualmente estou migrando para modelos OCR + um yolo treinado localmente para substituir as chamadas de API do cloud e Roboflow.
 ---
 
 ## 💡 O que é?
