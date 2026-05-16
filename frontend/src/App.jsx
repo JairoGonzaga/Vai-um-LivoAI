@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Historico from "./pages/Historico";
@@ -11,6 +12,7 @@ export default function App() {
     <div>
       <Navbar currentPage={pagina} onNavigate={setPagina} />
       {pagina === "home" ? <Home /> : pagina === "historico" ? <Historico /> : <Catalogo />}
+      <Analytics />
     </div>
   );
 }
